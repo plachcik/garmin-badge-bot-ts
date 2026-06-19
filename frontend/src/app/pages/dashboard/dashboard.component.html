@@ -1,116 +1,155 @@
-<div class="layout">
-  <header>
-    <h1>Panel admina 🏅</h1>
-    <button class="btn-ghost" (click)="logout()">Wyloguj</button>
+<div class="max-w-3xl mx-auto px-5 py-8 flex flex-col gap-8">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between">
+    <h1 class="text-xl font-bold">Panel admina 🏅</h1>
+    <button
+      class="text-zinc-400 border border-zinc-700 hover:text-zinc-100 hover:border-zinc-500 py-2 px-4 text-sm"
+      (click)="logout()"
+    >
+      Wyloguj
+    </button>
   </header>
 
-  <!-- ── Subscribers ── -->
-  <section>
-    <h2>Subskrybenci</h2>
+  <!-- Subscribers -->
+  <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col gap-1">
+    <h2 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Subskrybenci</h2>
+
     @if (subscribers().length === 0) {
-      <span class="empty">Brak subskrybentów.</span>
+      <span class="text-zinc-500 text-sm">Brak subskrybentów.</span>
     }
+
     @for (sub of subscribers(); track sub.chatId) {
-      <div class="sub-row">
-        <div class="sub-info">
+      <div class="flex items-center gap-3 py-3 border-b border-zinc-800 last:border-0">
+        <div class="flex-1 min-w-0">
           @if (editingName() === sub.chatId) {
             <input
-              class="sub-name-input"
               type="text"
+              class="max-w-xs font-semibold"
               [(ngModel)]="editNameValue"
               (keyup.enter)="saveName(sub)"
               (keyup.escape)="cancelEdit()"
               (blur)="saveName(sub)"
             />
           } @else {
-            <div class="sub-name-display" (click)="startEdit(sub)">
+            <div
+              class="flex items-center gap-1.5 font-semibold cursor-pointer group"
+              (click)="startEdit(sub)"
+            >
               {{ sub.name }}
-              <span class="edit-icon">✏️</span>
+              <span class="text-xs text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
             </div>
           }
-          <div class="sub-id">{{ sub.chatId }}</div>
+          <div class="text-xs text-zinc-500 mt-0.5">{{ sub.chatId }}</div>
         </div>
-        <div class="toggles">
-          <span
-            class="chip"
-            [class.on]="sub.showImages"
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            class="px-3 py-1 rounded-full text-xs border transition-colors"
+            [class]="sub.showImages
+              ? 'bg-indigo-600 border-indigo-600 text-white'
+              : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'"
             (click)="toggleImages(sub)"
-          >🖼 Obrazki</span>
-          <span
-            class="chip muted"
-            [class.on]="!sub.active"
+          >
+            🖼 Obrazki
+          </button>
+          <button
+            class="px-3 py-1 rounded-full text-xs border transition-colors"
+            [class]="!sub.active
+              ? 'bg-red-600 border-red-600 text-white'
+              : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'"
             (click)="toggleActive(sub)"
-          >{{ sub.active ? '🔔 Aktywny' : '🔕 Wyciszony' }}</span>
+          >
+            {{ sub.active ? '🔔 Aktywny' : '🔕 Wyciszony' }}
+          </button>
         </div>
       </div>
     }
   </section>
 
-  <!-- ── Schedule ── -->
-  <section>
-    <h2>Harmonogram</h2>
+  <!-- Schedule -->
+  <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col gap-5">
+    <h2 class="text-xs font-bold text-zinc-500 uppercase tracking-widest">Harmonogram</h2>
+
     @if (scheduleForm(); as f) {
-      <div class="schedule-grid">
-        <div class="field">
-          <label>Godzina wysyłki (UTC)</label>
-          <div class="time-row">
-            <input
-              type="number"
-              min="0" max="23"
-              [ngModel]="f.dailyHour"
-              (ngModelChange)="scheduleForm.set({...f, dailyHour: $event})"
-            />
-            <span class="time-sep">:</span>
-            <input
-              type="number"
-              min="0" max="59"
-              [ngModel]="f.dailyMinute"
-              (ngModelChange)="scheduleForm.set({...f, dailyMinute: $event})"
-            />
-          </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm text-zinc-400">Godzina wysyłki (UTC)</label>
+        <div class="flex items-center gap-2">
+          <input
+            type="number"
+            min="0" max="23"
+            class="w-20"
+            [ngModel]="f.dailyHour"
+            (ngModelChange)="scheduleForm.set({...f, dailyHour: $event})"
+          />
+          <span class="text-zinc-500 font-bold">:</span>
+          <input
+            type="number"
+            min="0" max="59"
+            class="w-20"
+            [ngModel]="f.dailyMinute"
+            (ngModelChange)="scheduleForm.set({...f, dailyMinute: $event})"
+          />
         </div>
       </div>
 
-      <div class="toggle-row">
-        <label class="toggle-switch">
+      <div class="flex items-center gap-3">
+        <label class="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
+            class="sr-only peer"
             [ngModel]="f.weeklyEveryDay"
             (ngModelChange)="scheduleForm.set({...f, weeklyEveryDay: $event})"
           />
-          <span class="slider"></span>
+          <div class="w-11 h-6 bg-zinc-700 rounded-full peer
+                      peer-checked:bg-indigo-600
+                      after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                      after:bg-white after:rounded-full after:h-5 after:w-5
+                      after:transition-all peer-checked:after:translate-x-5">
+          </div>
         </label>
-        <span class="toggle-label">
+        <span class="text-sm">
           Weekly digest codziennie
-          <span style="color:var(--text-muted);font-size:13px">
-            (wyłączone = tylko poniedziałki)
-          </span>
+          <span class="text-zinc-500">(wyłączone = tylko poniedziałki)</span>
         </span>
       </div>
 
-      <div class="save-row">
-        <button class="btn-save" [disabled]="savingSchedule()" (click)="saveSchedule()">
+      <div class="flex items-center gap-4">
+        <button
+          class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-2.5 px-5"
+          [disabled]="savingSchedule()"
+          (click)="saveSchedule()"
+        >
           {{ savingSchedule() ? 'Zapisywanie…' : 'Zapisz harmonogram' }}
         </button>
         @if (scheduleSaved()) {
-          <span class="save-ok">✓ Zapisano</span>
+          <span class="text-green-400 text-sm">✓ Zapisano</span>
         }
       </div>
     } @else {
-      <span class="empty">Ładowanie&hellip;</span>
+      <span class="text-zinc-500 text-sm">Ładowanie&hellip;</span>
     }
   </section>
 
-  <!-- ── Triggers ── -->
-  <section>
-    <h2>Ręczne wyzwolenia</h2>
-    <div class="trigger-row">
-      <button class="btn-trigger" [disabled]="triggering()" (click)="triggerWeekly()">
+  <!-- Triggers -->
+  <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col gap-4">
+    <h2 class="text-xs font-bold text-zinc-500 uppercase tracking-widest">Ręczne wyzwolenia</h2>
+    <div class="flex gap-3 flex-wrap">
+      <button
+        class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-sm py-2.5 px-5"
+        [disabled]="triggering()"
+        (click)="triggerWeekly()"
+      >
         📋 Wyślij weekly digest
       </button>
-      <button class="btn-trigger" [disabled]="triggering()" (click)="triggerDaily()">
+      <button
+        class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-sm py-2.5 px-5"
+        [disabled]="triggering()"
+        (click)="triggerDaily()"
+      >
         📅 Wyślij daily check
       </button>
     </div>
   </section>
+
 </div>

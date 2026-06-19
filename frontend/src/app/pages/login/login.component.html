@@ -1,14 +1,19 @@
-<div class="page">
-  <div class="card">
-    <h1>Garmin Badge Admin</h1>
+<div class="min-h-screen flex items-center justify-center p-6">
+  <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-10 w-full max-w-sm flex flex-col gap-5">
+    <h1 class="text-xl font-bold">Garmin Badge Admin</h1>
 
     @if (step() === 'idle') {
-      <p>Kliknij poniżej, żeby otrzymać kod logowania na Telegramie.</p>
-      <button class="btn-primary" (click)="requestCode()">Wyślij kod</button>
+      <p class="text-zinc-400 text-sm">Kliknij poniżej, żeby otrzymać kod logowania na Telegramie.</p>
+      <button
+        class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-3 px-5 w-full"
+        (click)="requestCode()"
+      >
+        Wyślij kod
+      </button>
     }
 
     @if (step() === 'sent' || step() === 'error') {
-      <p>Kod został wysłany na Twój prywatny chat. Wpisz go poniżej.</p>
+      <p class="text-zinc-400 text-sm">Kod został wysłany na Twój prywatny chat. Wpisz go poniżej.</p>
       <input
         type="text"
         placeholder="123456"
@@ -16,15 +21,22 @@
         (keyup.enter)="verify()"
         maxlength="6"
         autocomplete="one-time-code"
+        class="tracking-widest text-center text-lg"
       />
-      <button class="btn-primary" [disabled]="!code()" (click)="verify()">Zaloguj</button>
+      <button
+        class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-3 px-5 w-full"
+        [disabled]="!code()"
+        (click)="verify()"
+      >
+        Zaloguj
+      </button>
       @if (step() === 'error') {
-        <span class="error">Nieprawidłowy lub wygasły kod. Spróbuj ponownie.</span>
+        <span class="text-red-400 text-sm">Nieprawidłowy lub wygasły kod. Spróbuj ponownie.</span>
       }
     }
 
     @if (step() === 'loading') {
-      <p>Weryfikacja&hellip;</p>
+      <p class="text-zinc-400 text-sm">Weryfikacja&hellip;</p>
     }
   </div>
 </div>
