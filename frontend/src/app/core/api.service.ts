@@ -3,11 +3,20 @@ import { HttpClient } from "@angular/common/http";
 import { firstValueFrom } from "rxjs";
 import { AuthService } from "./auth.service.js";
 
+export interface SubscriberSchedule {
+  dailyHour?: number;
+  dailyMinute?: number;
+  weeklyEveryDay?: boolean;
+}
+
 export interface Subscriber {
   chatId: number;
   name: string;
   showImages: boolean;
   active: boolean;
+  dailyHour?: number;
+  dailyMinute?: number;
+  weeklyEveryDay?: boolean;
 }
 
 export interface BotConfig {
@@ -32,9 +41,17 @@ export class ApiService {
     return firstValueFrom(this.http.get<Subscriber[]>("/api/subscribers", this.headers));
   }
 
+  addSubscriber(chatId: number, name?: string) {
+    return firstValueFrom(this.http.post("/api/subscribers", { chatId, name }, this.headers));
+  }
+
+  deleteSubscriber(chatId: number) {
+    return firstValueFrom(this.http.delete(`/api/subscribers/${chatId}`, this.headers));
+  }
+
   patchSubscriber(
     chatId: number,
-    patch: Partial<Pick<Subscriber, "showImages" | "active"> & { name: string }>,
+    patch: Partial<Pick<Subscriber, "showImages" | "active" | "dailyHour" | "dailyMinute" | "weeklyEveryDay"> & { name: string }>,
   ) {
     return firstValueFrom(this.http.patch(`/api/subscribers/${chatId}`, patch, this.headers));
   }
@@ -53,5 +70,13 @@ export class ApiService {
 
   triggerDaily() {
     return firstValueFrom(this.http.post("/api/triggers/daily", {}, this.headers));
+  }
+
+  triggerWeeklyFor(chatId: number) {
+    return firstValueFrom(this.http.post(`/api/triggers/weekly/${chatId}`, {}, this.headers));
+  }
+
+  triggerDailyFor(chatId: number) {
+    return firstValueFrom(this.http.post(`/api/triggers/daily/${chatId}`, {}, this.headers));
   }
 }

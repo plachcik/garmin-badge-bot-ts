@@ -12,13 +12,20 @@ import { ApiService, Subscriber, BotConfig } from "../../core/api.service.js";
 })
 export class DashboardComponent implements OnInit {
   readonly subscribers = signal<Subscriber[]>([]);
-  readonly scheduleForm = signal<Pick<BotConfig, "dailyHour" | "dailyMinute" | "weeklyEveryDay"> | null>(null);
-  readonly triggering = signal(false);
-  readonly savingSchedule = signal(false);
-  readonly scheduleSaved = signal(false);
+  readonly globalSchedule = signal<Pick<BotConfig, "dailyHour" | "dailyMinute" | "weeklyEveryDay"> | null>(null);
+  readonly expandedId = signal<number | null>(null);
 
   readonly editingName = signal<number | null>(null);
   editNameValue = "";
+
+  readonly savingSchedule = signal<number | "global" | null>(null);
+  readonly savedSchedule = signal<number | "global" | null>(null);
+  readonly triggeringFor = signal<number | "all" | null>(null);
+
+  newChatId = "";
+  newName = "";
+  readonly addingSubscriber = signal(false);
+  readonly addError = signal("");
 
   constructor(
     private readonly api: ApiService,
@@ -29,16 +36,20 @@ export class DashboardComponent implements OnInit {
   async ngOnInit() {
     const [subs, cfg] = await Promise.all([this.api.getSubscribers(), this.api.getConfig()]);
     this.subscribers.set(subs);
-    this.scheduleForm.set({
-      dailyHour: cfg.dailyHour,
-      dailyMinute: cfg.dailyMinute,
-      weeklyEveryDay: cfg.weeklyEveryDay,
-    });
+    this.globalSchedule.set({ dailyHour: cfg.dailyHour, dailyMinute: cfg.dailyMinute, weeklyEveryDay: cfg.weeklyEveryDay });
+  }
+
+  // ── Accordion ─────────────────────────────────────────────────────────────
+
+  toggleExpand(chatId: number) {
+    this.expandedId.set(this.expandedId() === chatId ? null : chatId);
+    this.editingName.set(null);
   }
 
   // ── Name editing ─────────────────────────────────────────────────────────
 
-  startEdit(sub: Subscriber) {
+  startEdit(sub: Subscriber, event: Event) {
+    event.stopPropagation();
     this.editingName.set(sub.chatId);
     this.editNameValue = sub.name;
   }
@@ -58,48 +69,99 @@ export class DashboardComponent implements OnInit {
 
   // ── Toggles ──────────────────────────────────────────────────────────────
 
-  async toggleImages(sub: Subscriber) {
+  async toggleImages(sub: Subscriber, event: Event) {
+    event.stopPropagation();
     sub.showImages = !sub.showImages;
     this.subscribers.update((s) => [...s]);
     await this.api.patchSubscriber(sub.chatId, { showImages: sub.showImages });
   }
 
-  async toggleActive(sub: Subscriber) {
+  async toggleActive(sub: Subscriber, event: Event) {
+    event.stopPropagation();
     sub.active = !sub.active;
     this.subscribers.update((s) => [...s]);
     await this.api.patchSubscriber(sub.chatId, { active: sub.active });
   }
 
-  // ── Schedule ─────────────────────────────────────────────────────────────
+  // ── Per-subscriber schedule ───────────────────────────────────────────────
 
-  async saveSchedule() {
-    const f = this.scheduleForm();
-    if (!f) return;
-    this.savingSchedule.set(true);
-    this.scheduleSaved.set(false);
+  async saveSubscriberSchedule(sub: Subscriber) {
+    this.savingSchedule.set(sub.chatId);
     try {
-      await this.api.patchConfig({
-        dailyHour: Number(f.dailyHour),
-        dailyMinute: Number(f.dailyMinute),
-        weeklyEveryDay: f.weeklyEveryDay,
+      await this.api.patchSubscriber(sub.chatId, {
+        dailyHour: Number(sub.dailyHour),
+        dailyMinute: Number(sub.dailyMinute),
+        weeklyEveryDay: sub.weeklyEveryDay,
       });
-      this.scheduleSaved.set(true);
-      setTimeout(() => this.scheduleSaved.set(false), 3000);
+      this.savedSchedule.set(sub.chatId);
+      setTimeout(() => this.savedSchedule.set(null), 2500);
     } finally {
-      this.savingSchedule.set(false);
+      this.savingSchedule.set(null);
+    }
+  }
+
+  // ── Global schedule ───────────────────────────────────────────────────────
+
+  async saveGlobalSchedule() {
+    const f = this.globalSchedule();
+    if (!f) return;
+    this.savingSchedule.set("global");
+    try {
+      await this.api.patchConfig({ dailyHour: Number(f.dailyHour), dailyMinute: Number(f.dailyMinute), weeklyEveryDay: f.weeklyEveryDay });
+      this.savedSchedule.set("global");
+      setTimeout(() => this.savedSchedule.set(null), 2500);
+    } finally {
+      this.savingSchedule.set(null);
     }
   }
 
   // ── Triggers ─────────────────────────────────────────────────────────────
 
-  async triggerWeekly() {
-    this.triggering.set(true);
-    await this.api.triggerWeekly().finally(() => this.triggering.set(false));
+  async triggerWeeklyFor(sub: Subscriber) {
+    this.triggeringFor.set(sub.chatId);
+    await this.api.triggerWeeklyFor(sub.chatId).finally(() => this.triggeringFor.set(null));
   }
 
-  async triggerDaily() {
-    this.triggering.set(true);
-    await this.api.triggerDaily().finally(() => this.triggering.set(false));
+  async triggerDailyFor(sub: Subscriber) {
+    this.triggeringFor.set(sub.chatId);
+    await this.api.triggerDailyFor(sub.chatId).finally(() => this.triggeringFor.set(null));
+  }
+
+  async triggerWeeklyAll() {
+    this.triggeringFor.set("all");
+    await this.api.triggerWeekly().finally(() => this.triggeringFor.set(null));
+  }
+
+  async triggerDailyAll() {
+    this.triggeringFor.set("all");
+    await this.api.triggerDaily().finally(() => this.triggeringFor.set(null));
+  }
+
+  // ── Add subscriber ────────────────────────────────────────────────────────
+
+  async addSubscriber() {
+    const chatId = parseInt(this.newChatId.trim(), 10);
+    if (isNaN(chatId)) { this.addError.set("Nieprawidłowe ID czatu."); return; }
+    this.addingSubscriber.set(true);
+    this.addError.set("");
+    try {
+      await this.api.addSubscriber(chatId, this.newName.trim() || undefined);
+      const subs = await this.api.getSubscribers();
+      this.subscribers.set(subs);
+      this.newChatId = "";
+      this.newName = "";
+    } catch {
+      this.addError.set("Nie udało się dodać subskrybenta.");
+    } finally {
+      this.addingSubscriber.set(false);
+    }
+  }
+
+  async removeSubscriber(sub: Subscriber, event: Event) {
+    event.stopPropagation();
+    await this.api.deleteSubscriber(sub.chatId);
+    this.subscribers.update((s) => s.filter((x) => x.chatId !== sub.chatId));
+    if (this.expandedId() === sub.chatId) this.expandedId.set(null);
   }
 
   async logout() {
