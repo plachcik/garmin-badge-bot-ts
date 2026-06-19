@@ -40,6 +40,11 @@ export class AuthService {
     }
   }
 
+  clearSession(): void {
+    this._token.set(null);
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+
   authHeaders(): Record<string, string> {
     const t = this._token();
     return t ? { Authorization: `Bearer ${t}` } : {};
