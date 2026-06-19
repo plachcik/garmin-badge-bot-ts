@@ -3,7 +3,7 @@ import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { AuthService } from "../../core/auth.service.js";
 
-type Step = "idle" | "sent" | "loading" | "error";
+type Step = "idle" | "sent" | "loading" | "error" | "send-error";
 
 @Component({
   selector: "app-login",
@@ -22,8 +22,12 @@ export class LoginComponent {
 
   async requestCode() {
     this.step.set("loading");
-    await this.auth.requestCode();
-    this.step.set("sent");
+    try {
+      await this.auth.requestCode();
+      this.step.set("sent");
+    } catch {
+      this.step.set("send-error");
+    }
   }
 
   async verify() {

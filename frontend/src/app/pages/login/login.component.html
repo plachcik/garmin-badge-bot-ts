@@ -2,13 +2,18 @@
   <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-10 w-full max-w-sm flex flex-col gap-5">
     <h1 class="text-xl font-bold">Garmin Badge Admin</h1>
 
-    @if (step() === 'idle') {
+    @if (step() === 'idle' || step() === 'send-error') {
       <p class="text-zinc-400 text-sm">Kliknij poniżej, żeby otrzymać kod logowania na Telegramie.</p>
+      @if (step() === 'send-error') {
+        <div class="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-red-400 text-xs">
+          Nie udało się wysłać kodu. Sprawdź konfigurację bota i spróbuj ponownie.
+        </div>
+      }
       <button
         class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-3 px-5 w-full"
         (click)="requestCode()"
       >
-        Wyślij kod
+        {{ step() === 'send-error' ? 'Spróbuj ponownie' : 'Wyślij kod weryfikacyjny' }}
       </button>
     }
 
@@ -25,7 +30,7 @@
       />
       <button
         class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-3 px-5 w-full"
-        [disabled]="!code()"
+        [disabled]="!code"
         (click)="verify()"
       >
         Zaloguj
