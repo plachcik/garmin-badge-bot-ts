@@ -29,6 +29,12 @@ export function createApiServer() {
     next();
   }
 
+  // ── Health check ─────────────────────────────────────────────────────────
+
+  app.get("/api/health", (_req: Request, res: Response): void => {
+    res.json({ ok: true });
+  });
+
   // ── Auth routes ──────────────────────────────────────────────────────────
 
   app.post("/api/auth/request", async (_req: Request, res: Response): Promise<void> => {
