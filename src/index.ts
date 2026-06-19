@@ -21,6 +21,8 @@ import {
 } from "./subscribers.js";
 import { sendWeeklyDigest, sendTodaySpecial, notifyAdminError } from "./jobs.js";
 import { startApiServer } from "./api/server.js";
+import { getRuntimeSchedule } from "./runtimeConfig.js";
+import type { ScheduledTask } from "node-cron";
 const logger = createLogger("bot");
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -219,27 +221,36 @@ async function logSubscribers(): Promise<void> {
   }
 }
 
-function scheduleJobs(): void {
-  const h = config.dailyHour;
-  const m = config.dailyMinute;
-  const sm = (m + 1) % 60;
-  const sh = h + (m === 59 ? 1 : 0);
+let _weeklyTask: ScheduledTask | null = null;
+let _specialTask: ScheduledTask | null = null;
 
-  const weeklyPattern = config.weeklyEveryDay ? `${m} ${h} * * *` : `${m} ${h} * * 1`;
+export function rescheduleJobs(): void {
+  _weeklyTask?.stop();
+  _specialTask?.stop();
+
+  const { dailyHour: h, dailyMinute: m, weeklyEveryDay } = getRuntimeSchedule();
+  const sm = (m + 1) % 60;
+  const sh = m === 59 ? h + 1 : h;
+
+  const weeklyPattern = weeklyEveryDay ? `${m} ${h} * * *` : `${m} ${h} * * 1`;
   const specialPattern = `${sm} ${sh} * * *`;
 
   const polandWeekly = utcToPoland(h, m);
   const polandSpecial = utcToPoland(sh, sm);
   logger.info(
-    `Scheduler started — weekly digest ${config.weeklyEveryDay ? "every day" : "Mondays only"} ` +
+    `Scheduler (re)started — weekly digest ${weeklyEveryDay ? "every day" : "Mondays only"} ` +
     `at ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} UTC = ` +
     `${String(polandWeekly.hour).padStart(2, "0")}:${String(polandWeekly.minute).padStart(2, "0")} Poland time, ` +
     `today-special at ${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")} UTC = ` +
     `${String(polandSpecial.hour).padStart(2, "0")}:${String(polandSpecial.minute).padStart(2, "0")} Poland time`,
   );
 
-  cron.schedule(weeklyPattern, () => void sendWeeklyDigest(), { timezone: "UTC" });
-  cron.schedule(specialPattern, () => void sendTodaySpecial(), { timezone: "UTC" });
+  _weeklyTask = cron.schedule(weeklyPattern, () => void sendWeeklyDigest(), { timezone: "UTC" });
+  _specialTask = cron.schedule(specialPattern, () => void sendTodaySpecial(), { timezone: "UTC" });
+}
+
+function scheduleJobs(): void {
+  rescheduleJobs();
 }
 
 async function main(): Promise<void> {

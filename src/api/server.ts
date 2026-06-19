@@ -5,8 +5,10 @@ import { bot } from "../bot.js";
 import { config } from "../config.js";
 import { createLogger } from "../logger.js";
 import { sendWeeklyDigest, sendTodaySpecial } from "../jobs.js";
-import { loadSubscribers, loadSubscriberNames } from "../subscribers.js";
+import { loadSubscribers, loadSubscriberNames, saveSubscriberName } from "../subscribers.js";
 import { getAllSubscriberConfigs, setSubscriberConfig } from "../subscriberConfig.js";
+import { getRuntimeSchedule, setRuntimeSchedule } from "../runtimeConfig.js";
+import { rescheduleJobs } from "../index.js";
 import { generateCode, consumeCode, isValidSession, invalidateSession } from "./auth.js";
 
 const logger = createLogger("api");
@@ -85,23 +87,48 @@ export function createApiServer() {
       res.status(400).json({ error: "Invalid chatId" });
       return;
     }
-    const { showImages, active } = req.body as { showImages?: boolean; active?: boolean };
+    const { showImages, active, name } = req.body as {
+      showImages?: boolean;
+      active?: boolean;
+      name?: string;
+    };
     const patch: Record<string, boolean> = {};
     if (typeof showImages === "boolean") patch["showImages"] = showImages;
     if (typeof active === "boolean") patch["active"] = active;
-    setSubscriberConfig(chatId, patch);
+    if (Object.keys(patch).length > 0) setSubscriberConfig(chatId, patch);
+    if (typeof name === "string" && name.trim()) saveSubscriberName(chatId, name.trim());
     res.json({ ok: true });
   });
 
   // ── Config routes ────────────────────────────────────────────────────────
 
   app.get("/api/config", requireAuth, (_req: Request, res: Response): void => {
+    const schedule = getRuntimeSchedule();
     res.json({
       showBadgeImage: config.showBadgeImage,
-      weeklyEveryDay: config.weeklyEveryDay,
-      dailyHour: config.dailyHour,
-      dailyMinute: config.dailyMinute,
+      weeklyEveryDay: schedule.weeklyEveryDay,
+      dailyHour: schedule.dailyHour,
+      dailyMinute: schedule.dailyMinute,
     });
+  });
+
+  app.patch("/api/config", requireAuth, (req: Request, res: Response): void => {
+    const { dailyHour, dailyMinute, weeklyEveryDay } = req.body as {
+      dailyHour?: number;
+      dailyMinute?: number;
+      weeklyEveryDay?: boolean;
+    };
+    const patch: Partial<{ dailyHour: number; dailyMinute: number; weeklyEveryDay: boolean }> = {};
+    if (typeof dailyHour === "number" && dailyHour >= 0 && dailyHour <= 23) patch.dailyHour = dailyHour;
+    if (typeof dailyMinute === "number" && dailyMinute >= 0 && dailyMinute <= 59) patch.dailyMinute = dailyMinute;
+    if (typeof weeklyEveryDay === "boolean") patch.weeklyEveryDay = weeklyEveryDay;
+    if (Object.keys(patch).length === 0) {
+      res.status(400).json({ error: "No valid fields to update" });
+      return;
+    }
+    const updated = setRuntimeSchedule(patch);
+    rescheduleJobs();
+    res.json({ ok: true, schedule: updated });
   });
 
   // ── Trigger routes ───────────────────────────────────────────────────────

@@ -32,14 +32,19 @@ export class ApiService {
     return firstValueFrom(this.http.get<Subscriber[]>("/api/subscribers", this.headers));
   }
 
-  patchSubscriber(chatId: number, patch: Partial<Pick<Subscriber, "showImages" | "active">>) {
-    return firstValueFrom(
-      this.http.patch(`/api/subscribers/${chatId}`, patch, this.headers),
-    );
+  patchSubscriber(
+    chatId: number,
+    patch: Partial<Pick<Subscriber, "showImages" | "active"> & { name: string }>,
+  ) {
+    return firstValueFrom(this.http.patch(`/api/subscribers/${chatId}`, patch, this.headers));
   }
 
   getConfig(): Promise<BotConfig> {
     return firstValueFrom(this.http.get<BotConfig>("/api/config", this.headers));
+  }
+
+  patchConfig(patch: Partial<Pick<BotConfig, "dailyHour" | "dailyMinute" | "weeklyEveryDay">>) {
+    return firstValueFrom(this.http.patch("/api/config", patch, this.headers));
   }
 
   triggerWeekly() {
