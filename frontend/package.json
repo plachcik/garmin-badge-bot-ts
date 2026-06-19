@@ -1,0 +1,28 @@
+{
+  "name": "garmin-badge-bot-admin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "ng build --output-path dist/frontend",
+    "start": "ng serve --proxy-config proxy.conf.json --open",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@angular/animations": "^17.3.0",
+    "@angular/common": "^17.3.0",
+    "@angular/compiler": "^17.3.0",
+    "@angular/core": "^17.3.0",
+    "@angular/forms": "^17.3.0",
+    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser-dynamic": "^17.3.0",
+    "@angular/router": "^17.3.0",
+    "rxjs": "^7.8.1",
+    "zone.js": "^0.14.4"
+  },
+  "devDependencies": {
+    "@angular/build": "^17.3.0",
+    "@angular/cli": "^17.3.0",
+    "@angular/compiler-cli": "^17.3.0",
+    "typescript": "^5.4.0"
+  }
+}
