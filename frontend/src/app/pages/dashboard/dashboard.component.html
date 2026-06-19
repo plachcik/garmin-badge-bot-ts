@@ -1,0 +1,116 @@
+<div class="layout">
+  <header>
+    <h1>Panel admina 🏅</h1>
+    <button class="btn-ghost" (click)="logout()">Wyloguj</button>
+  </header>
+
+  <!-- ── Subscribers ── -->
+  <section>
+    <h2>Subskrybenci</h2>
+    @if (subscribers().length === 0) {
+      <span class="empty">Brak subskrybentów.</span>
+    }
+    @for (sub of subscribers(); track sub.chatId) {
+      <div class="sub-row">
+        <div class="sub-info">
+          @if (editingName() === sub.chatId) {
+            <input
+              class="sub-name-input"
+              type="text"
+              [(ngModel)]="editNameValue"
+              (keyup.enter)="saveName(sub)"
+              (keyup.escape)="cancelEdit()"
+              (blur)="saveName(sub)"
+            />
+          } @else {
+            <div class="sub-name-display" (click)="startEdit(sub)">
+              {{ sub.name }}
+              <span class="edit-icon">✏️</span>
+            </div>
+          }
+          <div class="sub-id">{{ sub.chatId }}</div>
+        </div>
+        <div class="toggles">
+          <span
+            class="chip"
+            [class.on]="sub.showImages"
+            (click)="toggleImages(sub)"
+          >🖼 Obrazki</span>
+          <span
+            class="chip muted"
+            [class.on]="!sub.active"
+            (click)="toggleActive(sub)"
+          >{{ sub.active ? '🔔 Aktywny' : '🔕 Wyciszony' }}</span>
+        </div>
+      </div>
+    }
+  </section>
+
+  <!-- ── Schedule ── -->
+  <section>
+    <h2>Harmonogram</h2>
+    @if (scheduleForm(); as f) {
+      <div class="schedule-grid">
+        <div class="field">
+          <label>Godzina wysyłki (UTC)</label>
+          <div class="time-row">
+            <input
+              type="number"
+              min="0" max="23"
+              [ngModel]="f.dailyHour"
+              (ngModelChange)="scheduleForm.set({...f, dailyHour: $event})"
+            />
+            <span class="time-sep">:</span>
+            <input
+              type="number"
+              min="0" max="59"
+              [ngModel]="f.dailyMinute"
+              (ngModelChange)="scheduleForm.set({...f, dailyMinute: $event})"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <label class="toggle-switch">
+          <input
+            type="checkbox"
+            [ngModel]="f.weeklyEveryDay"
+            (ngModelChange)="scheduleForm.set({...f, weeklyEveryDay: $event})"
+          />
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-label">
+          Weekly digest codziennie
+          <span style="color:var(--text-muted);font-size:13px">
+            (wyłączone = tylko poniedziałki)
+          </span>
+        </span>
+      </div>
+
+      <div class="save-row">
+        <button class="btn-save" [disabled]="savingSchedule()" (click)="saveSchedule()">
+          {{ savingSchedule() ? 'Zapisywanie…' : 'Zapisz harmonogram' }}
+        </button>
+        @if (scheduleSaved()) {
+          <span class="save-ok">✓ Zapisano</span>
+        }
+      </div>
+    } @else {
+      <span class="empty">Ładowanie&hellip;</span>
+    }
+  </section>
+
+  <!-- ── Triggers ── -->
+  <section>
+    <h2>Ręczne wyzwolenia</h2>
+    <div class="trigger-row">
+      <button class="btn-trigger" [disabled]="triggering()" (click)="triggerWeekly()">
+        📋 Wyślij weekly digest
+      </button>
+      <button class="btn-trigger" [disabled]="triggering()" (click)="triggerDaily()">
+        📅 Wyślij daily check
+      </button>
+    </div>
+  </section>
+</div>

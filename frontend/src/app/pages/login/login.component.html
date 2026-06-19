@@ -1,0 +1,30 @@
+<div class="page">
+  <div class="card">
+    <h1>Garmin Badge Admin</h1>
+
+    @if (step() === 'idle') {
+      <p>Kliknij poniżej, żeby otrzymać kod logowania na Telegramie.</p>
+      <button class="btn-primary" (click)="requestCode()">Wyślij kod</button>
+    }
+
+    @if (step() === 'sent' || step() === 'error') {
+      <p>Kod został wysłany na Twój prywatny chat. Wpisz go poniżej.</p>
+      <input
+        type="text"
+        placeholder="123456"
+        [(ngModel)]="code"
+        (keyup.enter)="verify()"
+        maxlength="6"
+        autocomplete="one-time-code"
+      />
+      <button class="btn-primary" [disabled]="!code()" (click)="verify()">Zaloguj</button>
+      @if (step() === 'error') {
+        <span class="error">Nieprawidłowy lub wygasły kod. Spróbuj ponownie.</span>
+      }
+    }
+
+    @if (step() === 'loading') {
+      <p>Weryfikacja&hellip;</p>
+    }
+  </div>
+</div>
