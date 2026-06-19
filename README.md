@@ -25,18 +25,78 @@ To receive scheduled digests, anyone in the chat needs to send `/subscribe` or `
 
 Fires when there are badges whose start and end date share the same calendar day. Also previews tomorrow's single-day badges.
 
+## Admin panel
+
+A web-based admin panel is included for managing the bot without editing files directly.
+
+Features:
+- View and manage subscribers — add by chat ID, remove, rename
+- Per-subscriber settings — enable/disable badge images, mute notifications, set individual schedule
+- Manual triggers — send weekly digest or daily check to a single subscriber or all at once
+- Global schedule — change the default send time without restarting the bot
+
+Authentication uses a one-time code delivered to your Telegram chat — no passwords stored.
+
 ## Tech stack
 
-- **Node.js 20** + **TypeScript**
+- **Node.js 22** + **TypeScript**
 - **grammY** — Telegram bot framework
+- **Express** — HTTP server for the admin API and serving the frontend
 - **node-cron** — scheduler
+- **Angular 22** — admin panel frontend
+- **Tailwind CSS** — styling
 - **Vitest** — tests
+
+## Running locally
+
+### Prerequisites
+
+- Node.js 22+
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+- Your personal Telegram chat ID (get it from [@userinfobot](https://t.me/userinfobot))
+
+### 1. Install dependencies
+
+```bash
+npm install
+cd frontend && npm install && cd ..
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Fill in `.env`:
+
+```
+TELEGRAM_BOT_TOKEN=your_bot_token
+ADMIN_TELEGRAM_CHAT_ID=your_chat_id
+```
+
+### 3. Start the bot
+
+```bash
+npm run dev
+```
+
+The bot starts on port 3000. The admin API is available at `http://localhost:3000/api`.
+
+### 4. Start the admin panel (separate terminal)
+
+```bash
+cd frontend && npm run start
+```
+
+The Angular dev server runs at `http://localhost:4200` and proxies API calls to the bot on port 3000.
+
+Open `http://localhost:4200`, click **Wyślij kod weryfikacyjny** — a one-time code will be sent to your Telegram chat. Enter it to log in.
 
 ## Development
 
 ```bash
-npm install
-npm run dev        # run with hot reload
+npm run dev        # run bot with hot reload
 npm test           # run tests
 npm run typecheck  # type-check without emitting
 npm run lint       # eslint
@@ -45,9 +105,11 @@ npm run lint       # eslint
 ## Build & deploy
 
 ```bash
-npm run build      # compiles to dist/
+npm run build:all  # builds Angular frontend + TypeScript bot
 npm start          # runs compiled output
 ```
+
+The Angular build output is copied to `public/` and served statically by Express alongside the API.
 
 Deploy to Railway: push to GitHub, link repo, set env vars, mount volume at `/app/data` with `DATA_DIR=/app/data`.
 
