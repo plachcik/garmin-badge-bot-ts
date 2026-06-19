@@ -1,4 +1,3 @@
-import cron from "node-cron";
 import { type Context } from "grammy";
 import { bot } from "./bot.js";
 import { config } from "./config.js";
@@ -19,22 +18,12 @@ import {
   removeSubscriber,
   saveSubscriberName,
 } from "./subscribers.js";
-import { sendWeeklyDigest, sendTodaySpecial, notifyAdminError } from "./jobs.js";
+import { notifyAdminError } from "./jobs.js";
 import { startApiServer } from "./api/server.js";
-import { getRuntimeSchedule } from "./runtimeConfig.js";
-import type { ScheduledTask } from "node-cron";
+import { rescheduleJobs } from "./scheduler.js";
 const logger = createLogger("bot");
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function utcToPoland(hour: number, minute: number): { hour: number; minute: number } {
-  const now = new Date();
-  now.setUTCHours(hour, minute, 0, 0);
-  return {
-    hour: now.toLocaleString("en-US", { timeZone: "Europe/Warsaw", hour: "numeric", hour12: false }) as unknown as number,
-    minute: parseInt(now.toLocaleString("en-US", { timeZone: "Europe/Warsaw", minute: "numeric" })),
-  };
-}
 
 async function sendLongMessage(
   sendFn: (text: string, extra?: Record<string, unknown>) => Promise<unknown>,
@@ -221,42 +210,11 @@ async function logSubscribers(): Promise<void> {
   }
 }
 
-let _weeklyTask: ScheduledTask | null = null;
-let _specialTask: ScheduledTask | null = null;
-
-export function rescheduleJobs(): void {
-  _weeklyTask?.stop();
-  _specialTask?.stop();
-
-  const { dailyHour: h, dailyMinute: m, weeklyEveryDay } = getRuntimeSchedule();
-  const sm = (m + 1) % 60;
-  const sh = m === 59 ? h + 1 : h;
-
-  const weeklyPattern = weeklyEveryDay ? `${m} ${h} * * *` : `${m} ${h} * * 1`;
-  const specialPattern = `${sm} ${sh} * * *`;
-
-  const polandWeekly = utcToPoland(h, m);
-  const polandSpecial = utcToPoland(sh, sm);
-  logger.info(
-    `Scheduler (re)started — weekly digest ${weeklyEveryDay ? "every day" : "Mondays only"} ` +
-    `at ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} UTC = ` +
-    `${String(polandWeekly.hour).padStart(2, "0")}:${String(polandWeekly.minute).padStart(2, "0")} Poland time, ` +
-    `today-special at ${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")} UTC = ` +
-    `${String(polandSpecial.hour).padStart(2, "0")}:${String(polandSpecial.minute).padStart(2, "0")} Poland time`,
-  );
-
-  _weeklyTask = cron.schedule(weeklyPattern, () => void sendWeeklyDigest(), { timezone: "UTC" });
-  _specialTask = cron.schedule(specialPattern, () => void sendTodaySpecial(), { timezone: "UTC" });
-}
-
-function scheduleJobs(): void {
-  rescheduleJobs();
-}
 
 async function main(): Promise<void> {
   logger.info("Starting Garmin Badge Bot...");
   await logSubscribers();
-  scheduleJobs();
+  rescheduleJobs();
   startApiServer();
   logger.info("Bot is running.");
   bot.start({ drop_pending_updates: true });
