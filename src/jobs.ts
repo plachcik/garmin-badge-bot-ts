@@ -84,6 +84,57 @@ async function broadcast(
   }
 }
 
+export async function sendWeeklyDigestTo(chatId: number): Promise<void> {
+  logger.info(`Running weekly badge digest for chat_id=${chatId}...`);
+  try {
+    const { availableChallenges } = await fetchBadgeUpdates();
+    const chatCfg = getSubscriberConfig(chatId);
+    const showImages = chatCfg.showImages ?? config.showBadgeImage;
+    if (showImages && availableChallenges.length > 0) {
+      await sendPhotos(chatId, weeklyDigestHeader(), availableChallenges, {});
+    } else {
+      await sendLongText(chatId, buildWeeklyMessage(availableChallenges));
+    }
+    logger.info(`Weekly digest sent to chat_id=${chatId}.`);
+  } catch (e) {
+    logger.error(`Failed to send weekly digest to chat_id=${chatId}: ${e}`);
+    await notifyAdminError(e);
+  }
+}
+
+export async function sendTodaySpecialTo(chatId: number): Promise<void> {
+  logger.info(`Running today-special check for chat_id=${chatId}...`);
+  try {
+    const chatCfg = getSubscriberConfig(chatId);
+    const showImages = chatCfg.showImages ?? config.showBadgeImage;
+
+    const todayBadges = await fetchSingleDayBadges();
+    if (todayBadges.length > 0) {
+      if (showImages) {
+        await sendPhotos(chatId, todaySpecialHeader(), todayBadges, { todayOnly: true });
+      } else {
+        await sendLongText(chatId, buildTodaySpecialMessage(todayBadges));
+      }
+    }
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowBadges = await fetchSingleDayBadges(tomorrow);
+    if (tomorrowBadges.length > 0) {
+      if (showImages) {
+        await sendPhotos(chatId, tomorrowSpecialHeader(), tomorrowBadges, { tomorrowOnly: true });
+      } else {
+        await sendLongText(chatId, buildTomorrowSpecialMessage(tomorrowBadges));
+      }
+    }
+
+    logger.info(`Today-special sent to chat_id=${chatId}.`);
+  } catch (e) {
+    logger.error(`Failed to send today-special to chat_id=${chatId}: ${e}`);
+    await notifyAdminError(e);
+  }
+}
+
 export async function sendWeeklyDigest(): Promise<void> {
   logger.info("Running weekly badge digest... [triggered by: scheduler]");
   try {

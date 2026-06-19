@@ -4,6 +4,9 @@ import { config } from "./config.js";
 export interface ChatConfig {
   showImages?: boolean;
   active?: boolean;
+  dailyHour?: number;
+  dailyMinute?: number;
+  weeklyEveryDay?: boolean;
 }
 
 const CONFIG_FILE = () =>

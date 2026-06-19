@@ -4,11 +4,11 @@ import { fileURLToPath } from "node:url";
 import { bot } from "../bot.js";
 import { config } from "../config.js";
 import { createLogger } from "../logger.js";
-import { sendWeeklyDigest, sendTodaySpecial } from "../jobs.js";
-import { loadSubscribers, loadSubscriberNames, saveSubscriberName } from "../subscribers.js";
+import { sendWeeklyDigest, sendTodaySpecial, sendWeeklyDigestTo, sendTodaySpecialTo } from "../jobs.js";
+import { loadSubscribers, loadSubscriberNames, saveSubscriberName, addSubscriber, removeSubscriber } from "../subscribers.js";
 import { getAllSubscriberConfigs, setSubscriberConfig } from "../subscriberConfig.js";
 import { getRuntimeSchedule, setRuntimeSchedule } from "../runtimeConfig.js";
-import { rescheduleJobs } from "../index.js";
+import { rescheduleJobs } from "../scheduler.js";
 import { generateCode, consumeCode, isValidSession, invalidateSession } from "./auth.js";
 
 const logger = createLogger("api");
@@ -78,13 +78,31 @@ export function createApiServer() {
     const ids = loadSubscribers();
     const names = loadSubscriberNames();
     const configs = getAllSubscriberConfigs();
-    const subscribers = ids.map((id) => ({
-      chatId: id,
-      name: names[String(id)] ?? String(id),
-      showImages: configs[String(id)]?.showImages ?? config.showBadgeImage,
-      active: configs[String(id)]?.active ?? true,
-    }));
+    const globalSchedule = getRuntimeSchedule();
+    const subscribers = ids.map((id) => {
+      const cfg = configs[String(id)] ?? {};
+      return {
+        chatId: id,
+        name: names[String(id)] ?? String(id),
+        showImages: cfg.showImages ?? config.showBadgeImage,
+        active: cfg.active ?? true,
+        dailyHour: cfg.dailyHour ?? globalSchedule.dailyHour,
+        dailyMinute: cfg.dailyMinute ?? globalSchedule.dailyMinute,
+        weeklyEveryDay: cfg.weeklyEveryDay ?? globalSchedule.weeklyEveryDay,
+      };
+    });
     res.json(subscribers);
+  });
+
+  app.post("/api/subscribers", requireAuth, (req: Request, res: Response): void => {
+    const { chatId, name } = req.body as { chatId?: number; name?: string };
+    if (!chatId || isNaN(chatId)) {
+      res.status(400).json({ error: "chatId required" });
+      return;
+    }
+    const added = addSubscriber(chatId);
+    if (typeof name === "string" && name.trim()) saveSubscriberName(chatId, name.trim());
+    res.json({ ok: true, added });
   });
 
   app.patch("/api/subscribers/:chatId", requireAuth, (req: Request, res: Response): void => {
@@ -93,16 +111,32 @@ export function createApiServer() {
       res.status(400).json({ error: "Invalid chatId" });
       return;
     }
-    const { showImages, active, name } = req.body as {
+    const { showImages, active, name, dailyHour, dailyMinute, weeklyEveryDay } = req.body as {
       showImages?: boolean;
       active?: boolean;
       name?: string;
+      dailyHour?: number;
+      dailyMinute?: number;
+      weeklyEveryDay?: boolean;
     };
-    const patch: Record<string, boolean> = {};
+    const patch: Record<string, boolean | number> = {};
     if (typeof showImages === "boolean") patch["showImages"] = showImages;
     if (typeof active === "boolean") patch["active"] = active;
+    if (typeof dailyHour === "number" && dailyHour >= 0 && dailyHour <= 23) patch["dailyHour"] = dailyHour;
+    if (typeof dailyMinute === "number" && dailyMinute >= 0 && dailyMinute <= 59) patch["dailyMinute"] = dailyMinute;
+    if (typeof weeklyEveryDay === "boolean") patch["weeklyEveryDay"] = weeklyEveryDay;
     if (Object.keys(patch).length > 0) setSubscriberConfig(chatId, patch);
     if (typeof name === "string" && name.trim()) saveSubscriberName(chatId, name.trim());
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/subscribers/:chatId", requireAuth, (req: Request, res: Response): void => {
+    const chatId = parseInt(req.params["chatId"]!, 10);
+    if (isNaN(chatId)) {
+      res.status(400).json({ error: "Invalid chatId" });
+      return;
+    }
+    removeSubscriber(chatId);
     res.json({ ok: true });
   });
 
@@ -140,14 +174,30 @@ export function createApiServer() {
   // ── Trigger routes ───────────────────────────────────────────────────────
 
   app.post("/api/triggers/weekly", requireAuth, (_req: Request, res: Response): void => {
-    logger.info("Manual trigger: weekly digest");
+    logger.info("Manual trigger: weekly digest (all)");
     void sendWeeklyDigest();
     res.json({ ok: true });
   });
 
   app.post("/api/triggers/daily", requireAuth, (_req: Request, res: Response): void => {
-    logger.info("Manual trigger: daily special");
+    logger.info("Manual trigger: daily special (all)");
     void sendTodaySpecial();
+    res.json({ ok: true });
+  });
+
+  app.post("/api/triggers/weekly/:chatId", requireAuth, (req: Request, res: Response): void => {
+    const chatId = parseInt(req.params["chatId"]!, 10);
+    if (isNaN(chatId)) { res.status(400).json({ error: "Invalid chatId" }); return; }
+    logger.info(`Manual trigger: weekly digest for chat_id=${chatId}`);
+    void sendWeeklyDigestTo(chatId);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/triggers/daily/:chatId", requireAuth, (req: Request, res: Response): void => {
+    const chatId = parseInt(req.params["chatId"]!, 10);
+    if (isNaN(chatId)) { res.status(400).json({ error: "Invalid chatId" }); return; }
+    logger.info(`Manual trigger: daily special for chat_id=${chatId}`);
+    void sendTodaySpecialTo(chatId);
     res.json({ ok: true });
   });
 
