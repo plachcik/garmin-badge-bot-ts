@@ -6,3 +6,6 @@ frontend/.angular/
 data/
 *.js.map
 coverage/
+.idea/
+.DS_Store
+garmin-subs/

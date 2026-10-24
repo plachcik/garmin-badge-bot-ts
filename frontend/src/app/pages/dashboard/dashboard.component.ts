@@ -3,11 +3,12 @@ import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { AuthService } from "../../core/auth.service.js";
 import { ApiService, Subscriber, BotConfig } from "../../core/api.service.js";
+import { BadgesComponent } from "./badges/badges.component.js";
 
 @Component({
   selector: "app-dashboard",
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, BadgesComponent],
   templateUrl: "./dashboard.component.html",
 })
 export class DashboardComponent implements OnInit {
@@ -141,7 +142,7 @@ export class DashboardComponent implements OnInit {
 
   async addSubscriber() {
     const chatId = parseInt(this.newChatId.trim(), 10);
-    if (isNaN(chatId)) { this.addError.set("Nieprawidłowe ID czatu."); return; }
+    if (isNaN(chatId)) { this.addError.set("Invalid chat ID."); return; }
     this.addingSubscriber.set(true);
     this.addError.set("");
     try {
@@ -151,7 +152,7 @@ export class DashboardComponent implements OnInit {
       this.newChatId = "";
       this.newName = "";
     } catch {
-      this.addError.set("Nie udało się dodać subskrybenta.");
+      this.addError.set("Failed to add subscriber.");
     } finally {
       this.addingSubscriber.set(false);
     }
@@ -159,7 +160,7 @@ export class DashboardComponent implements OnInit {
 
   async removeSubscriber(sub: Subscriber, event: Event) {
     event.stopPropagation();
-    if (!confirm(`Usunąć subskrybenta ${sub.name}?`)) {
+    if (!confirm(`Remove subscriber ${sub.name}?`)) {
       return;
     }
     await this.api.deleteSubscriber(sub.chatId);

@@ -14,6 +14,8 @@ import {
 } from "./messageBuilder.js";
 import { loadSubscribers } from "./subscribers.js";
 import { getSubscriberConfig } from "./subscriberConfig.js";
+import { withoutIgnored } from "./ignoredBadges.js";
+import { recordSentBadges } from "./sentBadges.js";
 import type { Badge } from "./types.js";
 
 const logger = createLogger("jobs");
@@ -103,13 +105,18 @@ export const sendWeeklyDigest = async (chatIds: number[] = activeTargets()): Pro
   }
   logger.info(`Running weekly badge digest for chat_id(s): ${chatIds.join(", ")}`);
   try {
-    const { availableChallenges } = await fetchBadgeUpdates();
+    const availableChallenges = withoutIgnored((await fetchBadgeUpdates()).availableChallenges);
+    let delivered = false;
     for (const chatId of chatIds) {
       try {
         await deliverWeekly(chatId, availableChallenges);
+        delivered = true;
       } catch (e) {
         logger.error(`Failed to send weekly digest to chat_id=${chatId}: ${e}`);
       }
+    }
+    if (delivered) {
+      recordSentBadges(availableChallenges, "weekly");
     }
     logger.info("Weekly digest sent.");
   } catch (e) {
@@ -124,21 +131,27 @@ export const sendTodaySpecial = async (chatIds: number[] = activeTargets()): Pro
   }
   logger.info(`Running today-special badge check for chat_id(s): ${chatIds.join(", ")}`);
   try {
-    const todayBadges = await fetchSingleDayBadges();
+    const todayBadges = withoutIgnored(await fetchSingleDayBadges());
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowBadges = await fetchSingleDayBadges(tomorrow);
+    const tomorrowBadges = withoutIgnored(await fetchSingleDayBadges(tomorrow));
 
     if (todayBadges.length === 0 && tomorrowBadges.length === 0) {
       logger.info("No today/tomorrow-special badges.");
       return;
     }
+    let delivered = false;
     for (const chatId of chatIds) {
       try {
         await deliverSpecial(chatId, todayBadges, tomorrowBadges);
+        delivered = true;
       } catch (e) {
         logger.error(`Failed to send today-special to chat_id=${chatId}: ${e}`);
       }
+    }
+    if (delivered) {
+      recordSentBadges(todayBadges, "today");
+      recordSentBadges(tomorrowBadges, "tomorrow");
     }
     logger.info(
       `Today-special sent (today: ${todayBadges.length}, tomorrow: ${tomorrowBadges.length} badge(s)).`,

@@ -39,6 +39,19 @@ export const specialTime = (hour: number, minute: number): { hour: number; minut
   return { hour, minute: minute + 1 };
 };
 
+/** First UTC time at or after `from` with the given hour:minute (on a Monday when mondaysOnly). */
+export const nextRunAt = (from: Date, hour: number, minute: number, mondaysOnly: boolean): Date => {
+  const run = new Date(from);
+  run.setUTCHours(hour, minute, 0, 0);
+  if (run < from) {
+    run.setUTCDate(run.getUTCDate() + 1);
+  }
+  while (mondaysOnly && run.getUTCDay() !== 1) {
+    run.setUTCDate(run.getUTCDate() + 1);
+  }
+  return run;
+};
+
 /** Returns the chats whose weekly digest / today-special falls on the given UTC minute. */
 export const computeDueChats = (now: Date, chats: ScheduledChat[]): DueChats => {
   const hour = now.getUTCHours();

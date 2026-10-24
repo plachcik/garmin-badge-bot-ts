@@ -23,10 +23,11 @@ const isGarminInName = (name: string): boolean => {
     return name.toLowerCase().includes("garmin");
 };
 
-export const fetchBadgeUpdates = async (): Promise<BadgeUpdates> => {
+/** Badges ending in the Mon–Sun week containing referenceDate (defaults to now). */
+export const fetchBadgeUpdates = async (referenceDate?: Date): Promise<BadgeUpdates> => {
     const badges = await fetchAll();
 
-    const now = new Date();
+    const now = referenceDate ?? new Date();
     const weekMonday = new Date(now);
     weekMonday.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
     weekMonday.setHours(0, 0, 0, 0);
@@ -66,9 +67,18 @@ export const fetchSingleDayBadges = async (targetDate?: Date): Promise<Badge[]> 
     const target = targetDate ?? new Date();
 
     const result = badges.filter((b) => {
-        if (b.premium) return false;
-        if (!isAvailableInPoland(b)) return false;
-        if (!b.start_date || !b.end_date) return false;
+        if (b.premium) {
+            return false;
+        }
+        if (!isAvailableInPoland(b)) {
+            return false;
+        }
+        if (!b.start_date || !b.end_date) {
+            return false;
+        }
+        if (isGarminInName(b.name)) {
+            return false;
+        }
         try {
             const startDt = parseDate(b.start_date);
             const endDt = parseDate(b.end_date);
@@ -84,4 +94,19 @@ export const fetchSingleDayBadges = async (targetDate?: Date): Promise<Badge[]> 
 
     logger.info(`Single-day badges for ${target.toISOString().slice(0, 10)}: ${result.length}`);
     return result;
+};
+
+/** All free, Poland-available badges with an end date that hasn't passed yet, soonest first. */
+export const fetchTimeLimitedBadges = async (): Promise<Badge[]> => {
+    const badges = await fetchAll();
+    const now = new Date();
+
+    return badges
+        .filter((b) => {
+            if (b.premium || !isAvailableInPoland(b) || !b.end_date || isGarminInName(b.name)) {
+                return false;
+            }
+            return parseDate(b.end_date) >= now;
+        })
+        .sort((a, b) => (a.end_date ?? "9999").localeCompare(b.end_date ?? "9999"));
 };

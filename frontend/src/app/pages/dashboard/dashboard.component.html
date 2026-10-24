@@ -11,7 +11,7 @@
         class="text-xs font-medium text-zinc-500 hover:text-zinc-200 px-3 py-1.5 rounded-md hover:bg-zinc-800"
         (click)="logout()"
       >
-        Wyloguj
+        Log out
       </button>
     </div>
   </header>
@@ -21,7 +21,7 @@
     <!-- Add subscriber -->
     <section class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-zinc-800">
-        <h2 class="text-sm font-semibold text-zinc-100">Dodaj subskrybenta</h2>
+        <h2 class="text-sm font-semibold text-zinc-100">Add subscriber</h2>
       </div>
       <div class="px-6 py-4 flex flex-col gap-3">
         <div class="flex gap-3">
@@ -30,8 +30,8 @@
             <input type="text" placeholder="123456789" [(ngModel)]="newChatId" (keyup.enter)="addSubscriber()" class="font-mono" />
           </div>
           <div class="flex flex-col gap-1 flex-1">
-            <label class="text-xs text-zinc-500">Nazwa (opcjonalnie)</label>
-            <input type="text" placeholder="Jan Kowalski" [(ngModel)]="newName" (keyup.enter)="addSubscriber()" />
+            <label class="text-xs text-zinc-500">Name (optional)</label>
+            <input type="text" placeholder="John Smith" [(ngModel)]="newName" (keyup.enter)="addSubscriber()" />
           </div>
           <div class="flex flex-col justify-end">
             <button
@@ -39,7 +39,7 @@
               [disabled]="addingSubscriber() || !newChatId"
               (click)="addSubscriber()"
             >
-              Dodaj
+              Add
             </button>
           </div>
         </div>
@@ -52,12 +52,12 @@
     <!-- Subscribers -->
     <section class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-zinc-100">Subskrybenci</h2>
+        <h2 class="text-sm font-semibold text-zinc-100">Subscribers</h2>
         <span class="text-xs text-zinc-600">{{ subscribers().length }}</span>
       </div>
 
       @if (subscribers().length === 0) {
-        <div class="px-6 py-10 text-center text-zinc-600 text-sm">Brak subskrybentów</div>
+        <div class="px-6 py-10 text-center text-zinc-600 text-sm">No subscribers</div>
       }
 
       @for (sub of subscribers(); track sub.chatId; let last = $last) {
@@ -109,18 +109,18 @@
             <!-- Quick toggles -->
             <div class="flex items-center gap-3 shrink-0">
               <label class="flex items-center gap-1.5 cursor-pointer" (click)="$event.stopPropagation()">
-                <span class="text-xs text-zinc-500">Obrazki</span>
+                <span class="text-xs text-zinc-500">Images</span>
                 <div class="toggle" [class.active]="sub.showImages" (click)="toggleImages(sub, $event)"></div>
               </label>
               <label class="flex items-center gap-1.5 cursor-pointer" (click)="$event.stopPropagation()">
-                <span class="text-xs text-zinc-500">Aktywny</span>
+                <span class="text-xs text-zinc-500">Active</span>
                 <div class="toggle" [class.active]="sub.active" (click)="toggleActive(sub, $event)"></div>
               </label>
               <button
                 class="text-xs text-zinc-600 hover:text-red-400 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
                 (click)="removeSubscriber(sub, $event)"
               >
-                Usuń
+                Remove
               </button>
             </div>
           </div>
@@ -135,10 +135,10 @@
 
                 <!-- Per-subscriber schedule -->
                 <div class="flex flex-col gap-4">
-                  <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Harmonogram</h3>
+                  <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Schedule</h3>
 
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-zinc-500">Godzina wysyłki (UTC)</label>
+                    <label class="text-xs text-zinc-500">Send time (UTC)</label>
                     <div class="flex items-center gap-2">
                       <input type="number" min="0" max="23" class="w-16 text-center font-mono"
                         [(ngModel)]="sub.dailyHour" />
@@ -150,8 +150,8 @@
 
                   <div class="flex items-center justify-between">
                     <div>
-                      <div class="text-xs font-medium text-zinc-300">Weekly digest codziennie</div>
-                      <div class="text-xs text-zinc-600 mt-0.5">Domyślnie tylko w poniedziałki</div>
+                      <div class="text-xs font-medium text-zinc-300">Weekly digest every day</div>
+                      <div class="text-xs text-zinc-600 mt-0.5">Mondays only by default</div>
                     </div>
                     <div class="toggle" [class.active]="sub.weeklyEveryDay"
                          (click)="sub.weeklyEveryDay = !sub.weeklyEveryDay; subscribers.update(s => [...s])"></div>
@@ -163,24 +163,24 @@
                       [disabled]="savingSchedule() === sub.chatId"
                       (click)="saveSubscriberSchedule(sub)"
                     >
-                      {{ savingSchedule() === sub.chatId ? 'Zapisywanie…' : 'Zapisz' }}
+                      {{ savingSchedule() === sub.chatId ? 'Saving…' : 'Save' }}
                     </button>
                     @if (savedSchedule() === sub.chatId) {
-                      <span class="text-xs text-emerald-400">Zapisano</span>
+                      <span class="text-xs text-emerald-400">Saved</span>
                     }
                   </div>
                 </div>
 
                 <!-- Per-subscriber triggers -->
                 <div class="flex flex-col gap-4">
-                  <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Wyzwolenia</h3>
+                  <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Triggers</h3>
                   <button
                     class="w-full text-left bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg px-4 py-3 transition-colors"
                     [disabled]="triggeringFor() === sub.chatId"
                     (click)="triggerWeeklyFor(sub)"
                   >
                     <div class="text-xs font-semibold text-zinc-200 mb-0.5">Weekly digest</div>
-                    <div class="text-xs text-zinc-500">Wyślij tylko do tego czatu</div>
+                    <div class="text-xs text-zinc-500">Send to this chat only</div>
                   </button>
                   <button
                     class="w-full text-left bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg px-4 py-3 transition-colors"
@@ -188,7 +188,7 @@
                     (click)="triggerDailyFor(sub)"
                   >
                     <div class="text-xs font-semibold text-zinc-200 mb-0.5">Daily check</div>
-                    <div class="text-xs text-zinc-500">Wyślij tylko do tego czatu</div>
+                    <div class="text-xs text-zinc-500">Send to this chat only</div>
                   </button>
                 </div>
 
@@ -199,18 +199,20 @@
       }
     </section>
 
+    <app-badges />
+
     <!-- Global schedule & triggers -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
       <section class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-zinc-800">
-          <h2 class="text-sm font-semibold text-zinc-100">Globalny harmonogram</h2>
-          <p class="text-xs text-zinc-600 mt-0.5">Domyślny dla wszystkich subskrybentów</p>
+          <h2 class="text-sm font-semibold text-zinc-100">Global schedule</h2>
+          <p class="text-xs text-zinc-600 mt-0.5">Default for all subscribers</p>
         </div>
         <div class="px-6 py-5 flex flex-col gap-4">
           @if (globalSchedule(); as f) {
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs text-zinc-500">Godzina wysyłki (UTC)</label>
+              <label class="text-xs text-zinc-500">Send time (UTC)</label>
               <div class="flex items-center gap-2">
                 <input type="number" min="0" max="23" class="w-16 text-center font-mono"
                   [ngModel]="f.dailyHour" (ngModelChange)="globalSchedule.set({...f, dailyHour: $event})" />
@@ -221,8 +223,8 @@
             </div>
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-xs font-medium text-zinc-300">Weekly digest codziennie</div>
-                <div class="text-xs text-zinc-600 mt-0.5">Domyślnie tylko w poniedziałki</div>
+                <div class="text-xs font-medium text-zinc-300">Weekly digest every day</div>
+                <div class="text-xs text-zinc-600 mt-0.5">Mondays only by default</div>
               </div>
               <div class="toggle" [class.active]="f.weeklyEveryDay"
                    (click)="globalSchedule.set({...f, weeklyEveryDay: !f.weeklyEveryDay})"></div>
@@ -233,10 +235,10 @@
                 [disabled]="savingSchedule() === 'global'"
                 (click)="saveGlobalSchedule()"
               >
-                {{ savingSchedule() === 'global' ? 'Zapisywanie…' : 'Zapisz' }}
+                {{ savingSchedule() === 'global' ? 'Saving…' : 'Save' }}
               </button>
               @if (savedSchedule() === 'global') {
-                <span class="text-xs text-emerald-400">Zapisano</span>
+                <span class="text-xs text-emerald-400">Saved</span>
               }
             </div>
           }
@@ -245,8 +247,8 @@
 
       <section class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-zinc-800">
-          <h2 class="text-sm font-semibold text-zinc-100">Wyzwolenia globalne</h2>
-          <p class="text-xs text-zinc-600 mt-0.5">Wyślij do wszystkich subskrybentów</p>
+          <h2 class="text-sm font-semibold text-zinc-100">Global triggers</h2>
+          <p class="text-xs text-zinc-600 mt-0.5">Send to all subscribers</p>
         </div>
         <div class="px-6 py-5 flex flex-col gap-3">
           <button
@@ -255,7 +257,7 @@
             (click)="triggerWeeklyAll()"
           >
             <div class="text-xs font-semibold text-zinc-200 mb-0.5">Weekly digest</div>
-            <div class="text-xs text-zinc-500">Wszystkie dostępne odznaki tego tygodnia</div>
+            <div class="text-xs text-zinc-500">All badges available this week</div>
           </button>
           <button
             class="w-full text-left bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg px-4 py-3 transition-colors"
@@ -263,7 +265,7 @@
             (click)="triggerDailyAll()"
           >
             <div class="text-xs font-semibold text-zinc-200 mb-0.5">Daily check</div>
-            <div class="text-xs text-zinc-500">Odznaki dostępne tylko dziś i jutro</div>
+            <div class="text-xs text-zinc-500">Badges available only today and tomorrow</div>
           </button>
         </div>
       </section>

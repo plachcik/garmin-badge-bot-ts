@@ -3,22 +3,22 @@
     <h1 class="text-xl font-bold">Garmin Badge Admin</h1>
 
     @if (step() === 'idle' || step() === 'send-error') {
-      <p class="text-zinc-400 text-sm">Kliknij poniżej, żeby otrzymać kod logowania na Telegramie.</p>
+      <p class="text-zinc-400 text-sm">Click below to receive a login code on Telegram.</p>
       @if (step() === 'send-error') {
         <div class="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-red-400 text-xs">
-          Nie udało się wysłać kodu. Sprawdź konfigurację bota i spróbuj ponownie.
+          Failed to send the code. Check the bot configuration and try again.
         </div>
       }
       <button
         class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-3 px-5 w-full"
         (click)="requestCode()"
       >
-        {{ step() === 'send-error' ? 'Spróbuj ponownie' : 'Wyślij kod weryfikacyjny' }}
+        {{ step() === 'send-error' ? 'Try again' : 'Send verification code' }}
       </button>
     }
 
     @if (step() === 'sent' || step() === 'error') {
-      <p class="text-zinc-400 text-sm">Kod został wysłany na Twój prywatny chat. Wpisz go poniżej.</p>
+      <p class="text-zinc-400 text-sm">The code has been sent to your private chat. Enter it below.</p>
       <input
         type="text"
         placeholder="123456"
@@ -33,15 +33,15 @@
         [disabled]="!code"
         (click)="verify()"
       >
-        Zaloguj
+        Log in
       </button>
       @if (step() === 'error') {
-        <span class="text-red-400 text-sm">Nieprawidłowy lub wygasły kod. Spróbuj ponownie.</span>
+        <span class="text-red-400 text-sm">Invalid or expired code. Try again.</span>
       }
     }
 
     @if (step() === 'loading') {
-      <p class="text-zinc-400 text-sm">Weryfikacja&hellip;</p>
+      <p class="text-zinc-400 text-sm">Verifying&hellip;</p>
     }
   </div>
 </div>

@@ -19,6 +19,7 @@ import {
   saveSubscriberName,
 } from "./subscribers.js";
 import { notifyAdminError } from "./jobs.js";
+import { withoutIgnored } from "./ignoredBadges.js";
 import { startApiServer } from "./api/server.js";
 import { startScheduler } from "./scheduler.js";
 const logger = createLogger("bot");
@@ -91,7 +92,7 @@ bot.command("odznaki", async (ctx: Context) => {
   await ctx.reply("⏳ Sprawdzam odznaki\\.\\.\\.", { parse_mode: "MarkdownV2" });
 
   try {
-    const { availableChallenges } = await fetchBadgeUpdates();
+    const availableChallenges = withoutIgnored((await fetchBadgeUpdates()).availableChallenges);
     if (config.showBadgeImage && availableChallenges.length > 0) {
       await ctx.reply(weeklyDigestHeader("👋🏻 *Dostępne odznaki w tym tygodniu:*"), {
         parse_mode: "MarkdownV2",
@@ -116,7 +117,7 @@ bot.command("odznaki", async (ctx: Context) => {
       );
     }
 
-    const todayBadges = await fetchSingleDayBadges();
+    const todayBadges = withoutIgnored(await fetchSingleDayBadges());
     if (todayBadges.length > 0) {
       if (config.showBadgeImage) {
         await ctx.reply(todaySpecialHeader(), { parse_mode: "MarkdownV2" });

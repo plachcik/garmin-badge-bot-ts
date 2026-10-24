@@ -34,6 +34,7 @@ Features:
 - Per-subscriber settings — enable/disable badge images, mute notifications, set individual schedule
 - Manual triggers — send weekly digest or daily check to a single subscriber or all at once
 - Global schedule — change the default send time without restarting the bot
+- Badges — upcoming, recently sent and all available badges, with an Ignore toggle that keeps a badge out of every message (ignored IDs are stored in `ignored-badges.json`)
 
 Authentication uses a one-time code delivered to your Telegram chat — no passwords stored.
 
@@ -91,7 +92,7 @@ cd frontend && npm run start
 
 The Angular dev server runs at `http://localhost:4200` and proxies API calls to the bot on port 3000.
 
-Open `http://localhost:4200`, click **Wyślij kod weryfikacyjny** — a one-time code will be sent to your Telegram chat. Enter it to log in.
+Open `http://localhost:4200`, click **Send verification code** — a one-time code will be sent to your Telegram chat. Enter it to log in.
 
 ## Development
 
@@ -111,7 +112,7 @@ npm start          # runs compiled output
 
 In the Docker image the Angular build output is copied to `public/` and served statically by Express alongside the API.
 
-Deploy to Railway: every push to `main` runs typecheck, lint, tests and build in GitHub Actions, then `railway up` to the Railway service (requires the `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` secrets). The service needs env vars set and a volume mounted at `/app/data` with `DATA_DIR=/app/data`.
+Deploy to Railway: every push to `main` runs typecheck, lint, tests and build in GitHub Actions, then `railway up` to the Railway service (requires the `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` secrets). The service needs env vars set and a volume mounted at `/app/data` with `DATA_DIR=/app/data`. Full step-by-step guide: [DEPLOY.md](DEPLOY.md).
 
 ## Environment variables
 

@@ -9,9 +9,28 @@ import { loadSubscribers, loadSubscriberNames, saveSubscriberName, addSubscriber
 import { getAllSubscriberConfigs, setSubscriberConfig } from "../subscriberConfig.js";
 import { getRuntimeSchedule, setRuntimeSchedule } from "../runtimeConfig.js";
 import { generateCode, consumeCode, isValidSession, invalidateSession } from "./auth.js";
+import { fetchBadgeUpdates, fetchSingleDayBadges, fetchTimeLimitedBadges } from "../garminClient.js";
+import { badgeImageUrl } from "../messageBuilder.js";
+import { loadIgnoredBadgeIds, setBadgeIgnored } from "../ignoredBadges.js";
+import { loadSentBadges } from "../sentBadges.js";
+import { nextRunAt, specialTime } from "../scheduler.js";
+import type { Badge } from "../types.js";
 
 const logger = createLogger("api");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const toBadgeDto = (badge: Badge, ignored: Set<number>) => {
+  return {
+    id: badge.id,
+    name: badge.name,
+    description: badge.description,
+    imageUrl: badgeImageUrl(badge),
+    difficulty: badge.difficulty_id,
+    startDate: badge.start_date?.slice(0, 10) ?? null,
+    endDate: badge.end_date?.slice(0, 10) ?? null,
+    ignored: ignored.has(badge.id),
+  };
+};
 
 export const createApiServer = () => {
   const app = express();
@@ -171,6 +190,58 @@ export const createApiServer = () => {
     }
     const updated = setRuntimeSchedule(patch);
     res.json({ ok: true, schedule: updated });
+  });
+
+  // ── Badge routes ─────────────────────────────────────────────────────────
+
+  app.get("/api/badges", requireAuth, async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const schedule = getRuntimeSchedule();
+      const now = new Date();
+      const weeklyAt = nextRunAt(now, schedule.dailyHour, schedule.dailyMinute, !schedule.weeklyEveryDay);
+      const special = specialTime(schedule.dailyHour, schedule.dailyMinute);
+      const dailyAt = nextRunAt(now, special.hour, special.minute, false);
+      const dayAfterDailyAt = new Date(dailyAt);
+      dayAfterDailyAt.setUTCDate(dayAfterDailyAt.getUTCDate() + 1);
+
+      const [weekly, today, tomorrow, all] = await Promise.all([
+        fetchBadgeUpdates(weeklyAt),
+        fetchSingleDayBadges(dailyAt),
+        fetchSingleDayBadges(dayAfterDailyAt),
+        fetchTimeLimitedBadges(),
+      ]);
+      const ignored = new Set(loadIgnoredBadgeIds());
+      res.json({
+        upcoming: {
+          weeklyAt: weeklyAt.toISOString(),
+          dailyAt: dailyAt.toISOString(),
+          weekly: weekly.availableChallenges.map((b) => toBadgeDto(b, ignored)),
+          today: today.map((b) => toBadgeDto(b, ignored)),
+          tomorrow: tomorrow.map((b) => toBadgeDto(b, ignored)),
+        },
+        recentlySent: loadSentBadges().map((s) => ({
+          ...toBadgeDto(s.badge, ignored),
+          kind: s.kind,
+          sentAt: s.sentAt,
+        })),
+        all: all.map((b) => toBadgeDto(b, ignored)),
+      });
+    } catch (e) {
+      logger.error(`Failed to load badges: ${e}`);
+      res.status(502).json({ error: "Failed to fetch badges" });
+    }
+  });
+
+  app.put("/api/badges/:badgeId/ignore", requireAuth, (req: Request, res: Response): void => {
+    const badgeId = parseInt(req.params["badgeId"]!, 10);
+    const { ignored } = req.body as { ignored?: boolean };
+    if (isNaN(badgeId) || typeof ignored !== "boolean") {
+      res.status(400).json({ error: "Invalid badgeId or ignored flag" });
+      return;
+    }
+    setBadgeIgnored(badgeId, ignored);
+    logger.info(`Badge ${badgeId} ${ignored ? "added to" : "removed from"} ignore list`);
+    res.json({ ok: true });
   });
 
   // ── Trigger routes ───────────────────────────────────────────────────────

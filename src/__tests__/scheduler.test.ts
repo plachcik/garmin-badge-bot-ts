@@ -7,7 +7,7 @@ vi.mock("../jobs.js", () => ({
   sendTodaySpecial: vi.fn(),
 }));
 
-const { computeDueChats, specialTime } = await import("../scheduler.js");
+const { computeDueChats, nextRunAt, specialTime } = await import("../scheduler.js");
 
 // 2026-10-26 is a Monday, 2026-10-27 a Tuesday
 const MONDAY_0800 = new Date("2026-10-26T08:00:00Z");
@@ -61,5 +61,23 @@ describe("computeDueChats", () => {
   it("returns nothing outside scheduled minutes", () => {
     const due = computeDueChats(new Date("2026-10-26T12:00:00Z"), [{ chatId: 1, schedule: everyDay }]);
     expect(due).toEqual({ weekly: [], special: [] });
+  });
+});
+
+describe("nextRunAt", () => {
+  it("returns today's time when it hasn't passed yet", () => {
+    expect(nextRunAt(new Date("2026-10-27T07:00:00Z"), 8, 0, false)).toEqual(new Date("2026-10-27T08:00:00Z"));
+  });
+
+  it("returns tomorrow's time when today's has passed", () => {
+    expect(nextRunAt(new Date("2026-10-27T09:00:00Z"), 8, 0, false)).toEqual(new Date("2026-10-28T08:00:00Z"));
+  });
+
+  it("returns the next Monday when mondaysOnly", () => {
+    expect(nextRunAt(new Date("2026-10-27T07:00:00Z"), 8, 0, true)).toEqual(new Date("2026-11-02T08:00:00Z"));
+  });
+
+  it("returns today when it is Monday before the run", () => {
+    expect(nextRunAt(new Date("2026-10-26T07:00:00Z"), 8, 0, true)).toEqual(new Date("2026-10-26T08:00:00Z"));
   });
 });

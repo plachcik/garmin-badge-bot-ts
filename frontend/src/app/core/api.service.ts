@@ -26,6 +26,34 @@ export interface BotConfig {
   dailyMinute: number;
 }
 
+export interface BadgeItem {
+  id: number;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  difficulty: number;
+  startDate: string | null;
+  endDate: string | null;
+  ignored: boolean;
+}
+
+export interface SentBadgeItem extends BadgeItem {
+  kind: "weekly" | "today" | "tomorrow";
+  sentAt: string;
+}
+
+export interface BadgesOverview {
+  upcoming: {
+    weeklyAt: string;
+    dailyAt: string;
+    weekly: BadgeItem[];
+    today: BadgeItem[];
+    tomorrow: BadgeItem[];
+  };
+  recentlySent: SentBadgeItem[];
+  all: BadgeItem[];
+}
+
 @Injectable({ providedIn: "root" })
 export class ApiService {
   constructor(
@@ -78,5 +106,13 @@ export class ApiService {
 
   triggerDailyFor(chatId: number) {
     return firstValueFrom(this.http.post(`/api/triggers/daily/${chatId}`, {}, this.headers));
+  }
+
+  getBadges(): Promise<BadgesOverview> {
+    return firstValueFrom(this.http.get<BadgesOverview>("/api/badges", this.headers));
+  }
+
+  setBadgeIgnored(badgeId: number, ignored: boolean) {
+    return firstValueFrom(this.http.put(`/api/badges/${badgeId}/ignore`, { ignored }, this.headers));
   }
 }
