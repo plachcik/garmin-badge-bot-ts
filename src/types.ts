@@ -31,7 +31,7 @@ export interface Badge {
   premium: boolean;
   category: BadgeCategory;
   difficulty: BadgeDifficulty;
-  countries: BadgeCountry[];
+  countries: BadgeCountry[] | null;
 }
 
 export interface BadgeUpdates {

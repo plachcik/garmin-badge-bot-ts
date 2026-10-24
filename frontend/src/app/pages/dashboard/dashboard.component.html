@@ -64,7 +64,7 @@
         <div>
           <!-- Row header — always visible -->
           <div
-            class="px-6 py-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-800/50 transition-colors select-none"
+            class="group px-6 py-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-800/50 transition-colors select-none"
             [class.border-b]="!last || expandedId() === sub.chatId"
             [class.border-zinc-800]="!last || expandedId() === sub.chatId"
             (click)="toggleExpand(sub.chatId)"

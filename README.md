@@ -109,9 +109,9 @@ npm run build:all  # builds Angular frontend + TypeScript bot
 npm start          # runs compiled output
 ```
 
-The Angular build output is copied to `public/` and served statically by Express alongside the API.
+In the Docker image the Angular build output is copied to `public/` and served statically by Express alongside the API.
 
-Deploy to Railway: push to GitHub, link repo, set env vars, mount volume at `/app/data` with `DATA_DIR=/app/data`.
+Deploy to Railway: every push to `main` runs typecheck, lint, tests and build in GitHub Actions, then `railway up` to the Railway service (requires the `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` secrets). The service needs env vars set and a volume mounted at `/app/data` with `DATA_DIR=/app/data`.
 
 ## Environment variables
 

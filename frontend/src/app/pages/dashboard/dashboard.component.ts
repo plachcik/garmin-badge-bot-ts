@@ -159,6 +159,9 @@ export class DashboardComponent implements OnInit {
 
   async removeSubscriber(sub: Subscriber, event: Event) {
     event.stopPropagation();
+    if (!confirm(`Usunąć subskrybenta ${sub.name}?`)) {
+      return;
+    }
     await this.api.deleteSubscriber(sub.chatId);
     this.subscribers.update((s) => s.filter((x) => x.chatId !== sub.chatId));
     if (this.expandedId() === sub.chatId) this.expandedId.set(null);

@@ -10,7 +10,7 @@ import {
 } from "../messageBuilder.js";
 import type { Badge } from "../types.js";
 
-function makeBadge(overrides: Partial<Badge> = {}): Badge {
+const makeBadge = (overrides: Partial<Badge> = {}): Badge => {
   return {
     id: 1,
     name: "Test Badge",
@@ -29,7 +29,7 @@ function makeBadge(overrides: Partial<Badge> = {}): Badge {
     countries: [],
     ...overrides,
   };
-}
+};
 
 // ── escapeMarkdownV2 ──────────────────────────────────────────────────────────
 

@@ -12,26 +12,26 @@ export interface ChatConfig {
 const CONFIG_FILE = () =>
   config.subscriberConfigFile;
 
-function readAll(): Record<string, ChatConfig> {
+const readAll = (): Record<string, ChatConfig> => {
   const file = CONFIG_FILE();
   if (!fs.existsSync(file)) return {};
   return JSON.parse(fs.readFileSync(file, "utf-8")) as Record<string, ChatConfig>;
-}
+};
 
-function writeAll(data: Record<string, ChatConfig>): void {
+const writeAll = (data: Record<string, ChatConfig>): void => {
   fs.writeFileSync(CONFIG_FILE(), JSON.stringify(data, null, 2), "utf-8");
-}
+};
 
-export function getSubscriberConfig(chatId: number): ChatConfig {
+export const getSubscriberConfig = (chatId: number): ChatConfig => {
   return readAll()[String(chatId)] ?? {};
-}
+};
 
-export function setSubscriberConfig(chatId: number, patch: Partial<ChatConfig>): void {
+export const setSubscriberConfig = (chatId: number, patch: Partial<ChatConfig>): void => {
   const all = readAll();
   all[String(chatId)] = { ...all[String(chatId)], ...patch };
   writeAll(all);
-}
+};
 
-export function getAllSubscriberConfigs(): Record<string, ChatConfig> {
+export const getAllSubscriberConfigs = (): Record<string, ChatConfig> => {
   return readAll();
-}
+};

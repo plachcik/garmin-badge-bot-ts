@@ -29,15 +29,15 @@ const ACTIVITY_LABELS: Record<string, string> = {
 };
 
 /** Escape special characters for Telegram MarkdownV2. */
-export function escapeMarkdownV2(text: string): string {
+export const escapeMarkdownV2 = (text: string): string => {
   return text.replace(/[_*[\]()~`>#+=|{}.!\-\\]/g, (ch) => `\\${ch}`);
-}
+};
 
-export function badgeImageUrl(badge: Badge): string | null {
+export const badgeImageUrl = (badge: Badge): string | null => {
   return badge.image_path ? `${IMAGE_BASE_URL}${badge.image_path}` : null;
-}
+};
 
-function formatDatePl(dateStr: string | null): string {
+const formatDatePl = (dateStr: string | null): string => {
   if (!dateStr) return "";
   try {
     const dt = new Date(dateStr.slice(0, 19));
@@ -45,16 +45,16 @@ function formatDatePl(dateStr: string | null): string {
   } catch {
     return dateStr;
   }
-}
+};
 
-function extractActivityLabel(desc: string): string | null {
+const extractActivityLabel = (desc: string): string | null => {
   for (const [keyword, label] of Object.entries(ACTIVITY_LABELS)) {
     if (desc.includes(keyword)) return label;
   }
   return null;
-}
+};
 
-export function formatGoal(badge: Badge): string {
+export const formatGoal = (badge: Badge): string => {
   const targetStr = badge.target_value;
   const desc = (badge.description ?? "").toLowerCase();
 
@@ -84,9 +84,9 @@ export function formatGoal(badge: Badge): string {
   const assoc =
     desc.includes(" activity") && !desc.includes("activities") ? "jedna aktywność" : "łącznie";
   return `${formatted} (${assoc})`;
-}
+};
 
-function buildDateLine(badge: Badge): string {
+const buildDateLine = (badge: Badge): string => {
   const startStr = badge.start_date;
   const endStr = badge.end_date;
   const startFmt = formatDatePl(startStr);
@@ -105,19 +105,21 @@ function buildDateLine(badge: Badge): string {
       return `⏰ ${escapeMarkdownV2(`Wyzwanie tylko ${endFmt}!`)}`;
     }
 
-    const started = startDt < new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const started = startDt < today;
     const verb = started ? "Wyzwanie zaczęło się" : "Wyzwanie zaczyna się";
     return `⏰ ${escapeMarkdownV2(`${verb} ${startFmt} a kończy ${endFmt}`)}`;
   } catch {
     return "";
   }
-}
+};
 
 /** Caption for a photo message (no bullet, no indent). */
-export function badgeCaption(
+export const badgeCaption = (
   badge: Badge,
   opts: { todayOnly?: boolean; tomorrowOnly?: boolean } = {},
-): string {
+): string => {
   const name = badge.name ?? "Unknown";
   const stars = DIFFICULTY_STARS[badge.difficulty_id] ?? "";
   const goal = formatGoal(badge);
@@ -135,10 +137,10 @@ export function badgeCaption(
   }
 
   return lines.join("\n");
-}
+};
 
 /** Text line for use in list messages. */
-function badgeLine(badge: Badge, opts: { todayOnly?: boolean; tomorrowOnly?: boolean } = {}): string {
+const badgeLine = (badge: Badge, opts: { todayOnly?: boolean; tomorrowOnly?: boolean } = {}): string => {
   const name = badge.name ?? "Unknown";
   const stars = DIFFICULTY_STARS[badge.difficulty_id] ?? "";
   const goal = formatGoal(badge);
@@ -156,49 +158,53 @@ function badgeLine(badge: Badge, opts: { todayOnly?: boolean; tomorrowOnly?: boo
   }
 
   return lines.join("\n");
-}
+};
 
 // ── Headers ─────────────────────────────────────────────────────────────────
 
-export function weeklyDigestHeader(custom?: string): string {
+export const weeklyDigestHeader = (custom?: string): string => {
   return custom ?? "👋🏻 *Żeby nie umknęło\\!*\n\n*Dostępne odznaki w tym tygodniu:*";
-}
+};
 
-export function todaySpecialHeader(): string {
+export const todaySpecialHeader = (): string => {
   return "Żeby nie umknęło 💡\n\n*📅 Dostępne odznaki tylko na dziś:*";
-}
+};
 
-export function tomorrowSpecialHeader(): string {
+export const tomorrowSpecialHeader = (): string => {
   return "Jutro nie zapomnij 👀\n\n*📅 Odznaki dostępne tylko jutro:*";
-}
+};
 
 // ── Full text messages ───────────────────────────────────────────────────────
 
-export function buildWeeklyMessage(badges: Badge[], header?: string): string {
+export const buildWeeklyMessage = (badges: Badge[], header?: string): string => {
   const headerLine = header ?? "👋🏻 *Żeby nie umknęło\\!*";
 
   if (badges.length === 0) {
     return `${headerLine}\n\nBrak aktywnych wyzwań w tym tygodniu\\. Ruszaj się\\! 🚶`;
   }
 
-  const lines = [headerLine];
-  if (!header) lines.push("*Dostępne odznaki w tym tygodniu:*\n");
-  for (const b of badges) lines.push(badgeLine(b));
+  const lines = [`${headerLine}\n`];
+  if (!header) {
+    lines.push("*Dostępne odznaki w tym tygodniu:*\n");
+  }
+  for (const b of badges) {
+    lines.push(`${badgeLine(b)}\n`);
+  }
   return lines.join("\n");
-}
+};
 
-export function buildTodaySpecialMessage(badges: Badge[]): string {
+export const buildTodaySpecialMessage = (badges: Badge[]): string => {
   return [
     "Żeby nie umknęło 💡\n",
     "*📅 Dostępne odznaki tylko na dziś:*\n",
-    ...badges.map((b) => badgeLine(b, { todayOnly: true })),
+    ...badges.map((b) => `${badgeLine(b, { todayOnly: true })}\n`),
   ].join("\n");
-}
+};
 
-export function buildTomorrowSpecialMessage(badges: Badge[]): string {
+export const buildTomorrowSpecialMessage = (badges: Badge[]): string => {
   return [
     "Jutro nie zapomnij 👀\n",
     "*📅 Odznaki dostępne tylko jutro:*\n",
-    ...badges.map((b) => badgeLine(b, { tomorrowOnly: true })),
+    ...badges.map((b) => `${badgeLine(b, { tomorrowOnly: true })}\n`),
   ].join("\n");
-}
+};

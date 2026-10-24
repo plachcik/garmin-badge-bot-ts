@@ -18,29 +18,29 @@ import type { Badge } from "./types.js";
 
 const logger = createLogger("jobs");
 
-export async function notifyAdminError(error: unknown): Promise<void> {
+export const notifyAdminError = async (error: unknown): Promise<void> => {
   try {
     await bot.api.sendMessage(config.adminChatId, `⚠️ Garmin badges API error\n\n${String(error)}`);
   } catch (e) {
     logger.error(`Failed to send admin error notification: ${e}`);
   }
-}
+};
 
-async function sendLongText(chatId: number, text: string): Promise<void> {
+const sendLongText = async (chatId: number, text: string): Promise<void> => {
   const limit = 4000;
   let remaining = text;
   while (remaining.length > 0) {
     await bot.api.sendMessage(chatId, remaining.slice(0, limit), { parse_mode: "MarkdownV2" });
     remaining = remaining.slice(limit);
   }
-}
+};
 
-async function sendPhotos(
+const sendPhotos = async (
   chatId: number,
   header: string,
   badges: Badge[],
   opts: { todayOnly?: boolean; tomorrowOnly?: boolean },
-): Promise<void> {
+): Promise<void> => {
   await bot.api.sendMessage(chatId, header, { parse_mode: "MarkdownV2" });
   for (const badge of badges) {
     const caption = badgeCaption(badge, opts);
@@ -56,130 +56,95 @@ async function sendPhotos(
       await bot.api.sendMessage(chatId, caption, { parse_mode: "MarkdownV2" });
     }
   }
-}
+};
 
-async function broadcast(
-  badges: Badge[],
-  header: string,
-  textMessage: string,
-  opts: { todayOnly?: boolean; tomorrowOnly?: boolean } = {},
-): Promise<void> {
+const showImagesFor = (chatId: number): boolean => {
+  return getSubscriberConfig(chatId).showImages ?? config.showBadgeImage;
+};
+
+/** Subscribers that receive scheduled messages; falls back to the admin chat when there are none. */
+export const activeTargets = (): number[] => {
   const subscribers = loadSubscribers();
-  const targets = subscribers.length > 0 ? subscribers : [config.adminChatId];
-
-  for (const chatId of targets) {
-    const chatCfg = getSubscriberConfig(chatId);
-    if (chatCfg.active === false) continue;
-    const showImages = chatCfg.showImages ?? config.showBadgeImage;
-
-    try {
-      if (showImages && badges.length > 0) {
-        await sendPhotos(chatId, header, badges, opts);
-      } else {
-        await sendLongText(chatId, textMessage);
-      }
-    } catch (e) {
-      logger.error(`Failed to send to chat_id=${chatId}: ${e}`);
-    }
+  if (subscribers.length === 0) {
+    return [config.adminChatId];
   }
-}
+  return subscribers.filter((chatId) => getSubscriberConfig(chatId).active !== false);
+};
 
-export async function sendWeeklyDigestTo(chatId: number): Promise<void> {
-  logger.info(`Running weekly badge digest for chat_id=${chatId}...`);
-  try {
-    const { availableChallenges } = await fetchBadgeUpdates();
-    const chatCfg = getSubscriberConfig(chatId);
-    const showImages = chatCfg.showImages ?? config.showBadgeImage;
-    if (showImages && availableChallenges.length > 0) {
-      await sendPhotos(chatId, weeklyDigestHeader(), availableChallenges, {});
+const deliverWeekly = async (chatId: number, badges: Badge[]): Promise<void> => {
+  if (showImagesFor(chatId) && badges.length > 0) {
+    await sendPhotos(chatId, weeklyDigestHeader(), badges, {});
+  } else {
+    await sendLongText(chatId, buildWeeklyMessage(badges));
+  }
+};
+
+const deliverSpecial = async (chatId: number, todayBadges: Badge[], tomorrowBadges: Badge[]): Promise<void> => {
+  const showImages = showImagesFor(chatId);
+  if (todayBadges.length > 0) {
+    if (showImages) {
+      await sendPhotos(chatId, todaySpecialHeader(), todayBadges, { todayOnly: true });
     } else {
-      await sendLongText(chatId, buildWeeklyMessage(availableChallenges));
+      await sendLongText(chatId, buildTodaySpecialMessage(todayBadges));
     }
-    logger.info(`Weekly digest sent to chat_id=${chatId}.`);
-  } catch (e) {
-    logger.error(`Failed to send weekly digest to chat_id=${chatId}: ${e}`);
-    await notifyAdminError(e);
   }
-}
-
-export async function sendTodaySpecialTo(chatId: number): Promise<void> {
-  logger.info(`Running today-special check for chat_id=${chatId}...`);
-  try {
-    const chatCfg = getSubscriberConfig(chatId);
-    const showImages = chatCfg.showImages ?? config.showBadgeImage;
-
-    const todayBadges = await fetchSingleDayBadges();
-    if (todayBadges.length > 0) {
-      if (showImages) {
-        await sendPhotos(chatId, todaySpecialHeader(), todayBadges, { todayOnly: true });
-      } else {
-        await sendLongText(chatId, buildTodaySpecialMessage(todayBadges));
-      }
+  if (tomorrowBadges.length > 0) {
+    if (showImages) {
+      await sendPhotos(chatId, tomorrowSpecialHeader(), tomorrowBadges, { tomorrowOnly: true });
+    } else {
+      await sendLongText(chatId, buildTomorrowSpecialMessage(tomorrowBadges));
     }
-
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowBadges = await fetchSingleDayBadges(tomorrow);
-    if (tomorrowBadges.length > 0) {
-      if (showImages) {
-        await sendPhotos(chatId, tomorrowSpecialHeader(), tomorrowBadges, { tomorrowOnly: true });
-      } else {
-        await sendLongText(chatId, buildTomorrowSpecialMessage(tomorrowBadges));
-      }
-    }
-
-    logger.info(`Today-special sent to chat_id=${chatId}.`);
-  } catch (e) {
-    logger.error(`Failed to send today-special to chat_id=${chatId}: ${e}`);
-    await notifyAdminError(e);
   }
-}
+};
 
-export async function sendWeeklyDigest(): Promise<void> {
-  logger.info("Running weekly badge digest... [triggered by: scheduler]");
+export const sendWeeklyDigest = async (chatIds: number[] = activeTargets()): Promise<void> => {
+  if (chatIds.length === 0) {
+    return;
+  }
+  logger.info(`Running weekly badge digest for chat_id(s): ${chatIds.join(", ")}`);
   try {
     const { availableChallenges } = await fetchBadgeUpdates();
-    await broadcast(
-      availableChallenges,
-      weeklyDigestHeader(),
-      buildWeeklyMessage(availableChallenges),
-    );
+    for (const chatId of chatIds) {
+      try {
+        await deliverWeekly(chatId, availableChallenges);
+      } catch (e) {
+        logger.error(`Failed to send weekly digest to chat_id=${chatId}: ${e}`);
+      }
+    }
     logger.info("Weekly digest sent.");
   } catch (e) {
     logger.error(`Failed to send weekly digest: ${e}`);
     await notifyAdminError(e);
   }
-}
+};
 
-export async function sendTodaySpecial(): Promise<void> {
-  logger.info("Running today-special badge check... [triggered by: scheduler]");
+export const sendTodaySpecial = async (chatIds: number[] = activeTargets()): Promise<void> => {
+  if (chatIds.length === 0) {
+    return;
+  }
+  logger.info(`Running today-special badge check for chat_id(s): ${chatIds.join(", ")}`);
   try {
     const todayBadges = await fetchSingleDayBadges();
-    if (todayBadges.length > 0) {
-      await broadcast(todayBadges, todaySpecialHeader(), buildTodaySpecialMessage(todayBadges), {
-        todayOnly: true,
-      });
-      logger.info(`Today-special message sent (${todayBadges.length} badge(s)).`);
-    } else {
-      logger.info("No today-special badges for today.");
-    }
-
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowBadges = await fetchSingleDayBadges(tomorrow);
-    if (tomorrowBadges.length > 0) {
-      await broadcast(
-        tomorrowBadges,
-        tomorrowSpecialHeader(),
-        buildTomorrowSpecialMessage(tomorrowBadges),
-        { tomorrowOnly: true },
-      );
-      logger.info(`Tomorrow-special message sent (${tomorrowBadges.length} badge(s)).`);
-    } else {
-      logger.info("No tomorrow-special badges.");
+
+    if (todayBadges.length === 0 && tomorrowBadges.length === 0) {
+      logger.info("No today/tomorrow-special badges.");
+      return;
     }
+    for (const chatId of chatIds) {
+      try {
+        await deliverSpecial(chatId, todayBadges, tomorrowBadges);
+      } catch (e) {
+        logger.error(`Failed to send today-special to chat_id=${chatId}: ${e}`);
+      }
+    }
+    logger.info(
+      `Today-special sent (today: ${todayBadges.length}, tomorrow: ${tomorrowBadges.length} badge(s)).`,
+    );
   } catch (e) {
     logger.error(`Failed to send today-special badges: ${e}`);
     await notifyAdminError(e);
   }
-}
+};

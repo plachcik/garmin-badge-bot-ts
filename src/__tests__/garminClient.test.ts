@@ -7,7 +7,7 @@ vi.stubGlobal("fetch", mockFetch);
 
 const { fetchBadgeUpdates, fetchSingleDayBadges } = await import("../garminClient.js");
 
-function makeBadge(overrides: Partial<Badge> = {}): Badge {
+const makeBadge = (overrides: Partial<Badge> = {}): Badge => {
   const now = new Date();
   // Default end_date: within current week (Wednesday)
   const weekMonday = new Date(now);
@@ -34,14 +34,14 @@ function makeBadge(overrides: Partial<Badge> = {}): Badge {
     countries: [],
     ...overrides,
   };
-}
+};
 
-function mockApi(badges: Badge[]) {
+const mockApi = (badges: Badge[]) => {
   mockFetch.mockResolvedValueOnce({
     ok: true,
     json: async () => badges,
   });
-}
+};
 
 beforeEach(() => {
   mockFetch.mockReset();

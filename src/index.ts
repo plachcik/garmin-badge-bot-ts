@@ -20,15 +20,15 @@ import {
 } from "./subscribers.js";
 import { notifyAdminError } from "./jobs.js";
 import { startApiServer } from "./api/server.js";
-import { rescheduleJobs } from "./scheduler.js";
+import { startScheduler } from "./scheduler.js";
 const logger = createLogger("bot");
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-async function sendLongMessage(
+const sendLongMessage = async (
   sendFn: (text: string, extra?: Record<string, unknown>) => Promise<unknown>,
   text: string,
-): Promise<void> {
+): Promise<void> => {
   const limit = 4000;
   let remaining = text;
   while (remaining.length > 0) {
@@ -36,7 +36,7 @@ async function sendLongMessage(
     remaining = remaining.slice(limit);
     await sendFn(chunk, { parse_mode: "MarkdownV2" });
   }
-}
+};
 
 // ── Command handlers ──────────────────────────────────────────────────────────
 
@@ -185,7 +185,7 @@ bot.on("message:text", async (ctx: Context) => {
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
-async function logSubscribers(): Promise<void> {
+const logSubscribers = async (): Promise<void> => {
   const subscribers = loadSubscribers();
   if (subscribers.length === 0) {
     logger.info(`No subscribers yet — will fall back to ADMIN_TELEGRAM_CHAT_ID=${config.adminChatId}`);
@@ -208,17 +208,22 @@ async function logSubscribers(): Promise<void> {
       logger.info(`  • [unknown] (id=${chatId}) — ${e}`);
     }
   }
-}
+};
 
 
-async function main(): Promise<void> {
+// Without a handler grammY stops polling on the first error thrown by a handler
+bot.catch((err) => {
+  logger.error(`Error while handling update ${err.ctx.update.update_id}: ${err.error}`);
+});
+
+const main = async (): Promise<void> => {
   logger.info("Starting Garmin Badge Bot...");
   await logSubscribers();
-  rescheduleJobs();
+  startScheduler();
   startApiServer();
   logger.info("Bot is running.");
-  bot.start({ drop_pending_updates: true });
-}
+  await bot.start({ drop_pending_updates: true });
+};
 
 main().catch((e) => {
   logger.error(`Fatal: ${e}`);

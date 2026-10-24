@@ -4,30 +4,29 @@ import { fileURLToPath } from "node:url";
 import { bot } from "../bot.js";
 import { config } from "../config.js";
 import { createLogger } from "../logger.js";
-import { sendWeeklyDigest, sendTodaySpecial, sendWeeklyDigestTo, sendTodaySpecialTo } from "../jobs.js";
+import { sendWeeklyDigest, sendTodaySpecial } from "../jobs.js";
 import { loadSubscribers, loadSubscriberNames, saveSubscriberName, addSubscriber, removeSubscriber } from "../subscribers.js";
 import { getAllSubscriberConfigs, setSubscriberConfig } from "../subscriberConfig.js";
 import { getRuntimeSchedule, setRuntimeSchedule } from "../runtimeConfig.js";
-import { rescheduleJobs } from "../scheduler.js";
 import { generateCode, consumeCode, isValidSession, invalidateSession } from "./auth.js";
 
 const logger = createLogger("api");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export function createApiServer() {
+export const createApiServer = () => {
   const app = express();
   app.use(express.json());
 
   // ── Auth middleware ──────────────────────────────────────────────────────
 
-  function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
     const token = req.headers.authorization?.replace("Bearer ", "");
     if (!token || !isValidSession(token)) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
     next();
-  }
+  };
 
   // ── Health check ─────────────────────────────────────────────────────────
 
@@ -39,6 +38,10 @@ export function createApiServer() {
 
   app.post("/api/auth/request", async (_req: Request, res: Response): Promise<void> => {
     const code = generateCode();
+    if (!code) {
+      res.status(429).json({ error: "Code requested too recently, try again in a moment" });
+      return;
+    }
     try {
       await bot.api.sendMessage(
         config.adminChatId,
@@ -167,7 +170,6 @@ export function createApiServer() {
       return;
     }
     const updated = setRuntimeSchedule(patch);
-    rescheduleJobs();
     res.json({ ok: true, schedule: updated });
   });
 
@@ -189,7 +191,7 @@ export function createApiServer() {
     const chatId = parseInt(req.params["chatId"]!, 10);
     if (isNaN(chatId)) { res.status(400).json({ error: "Invalid chatId" }); return; }
     logger.info(`Manual trigger: weekly digest for chat_id=${chatId}`);
-    void sendWeeklyDigestTo(chatId);
+    void sendWeeklyDigest([chatId]);
     res.json({ ok: true });
   });
 
@@ -197,11 +199,15 @@ export function createApiServer() {
     const chatId = parseInt(req.params["chatId"]!, 10);
     if (isNaN(chatId)) { res.status(400).json({ error: "Invalid chatId" }); return; }
     logger.info(`Manual trigger: daily special for chat_id=${chatId}`);
-    void sendTodaySpecialTo(chatId);
+    void sendTodaySpecial([chatId]);
     res.json({ ok: true });
   });
 
   // ── Static frontend ──────────────────────────────────────────────────────
+
+  app.all("/api/*", (_req: Request, res: Response): void => {
+    res.status(404).json({ error: "Not found" });
+  });
 
   const publicDir = path.resolve(__dirname, "../../public");
   app.use(express.static(publicDir));
@@ -210,11 +216,11 @@ export function createApiServer() {
   });
 
   return app;
-}
+};
 
-export function startApiServer(): void {
+export const startApiServer = (): void => {
   const app = createApiServer();
   app.listen(config.apiPort, () => {
     logger.info(`API server listening on port ${config.apiPort}`);
   });
-}
+};
